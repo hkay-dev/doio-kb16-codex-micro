@@ -1,0 +1,23 @@
+# .NET build outputs
+**/bin/
+**/obj/
+*.pdb
+
+# Native host-test executables
+firmware/keymaps/**/tools/*.exe
+
+# Local Mapper portable builds exceed GitHub's normal file-size limit.
+local-releases/mapper/v*/
+
+# QMK build outputs
+.build/
+*.elf
+*.hex
+*.map
+
+# Editor and OS files
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
