@@ -285,6 +285,13 @@ static bool copy_json_token(const char *value, char *target, size_t target_size)
     return true;
 }
 
+static bool json_scalar_ended(const char *value) {
+    while (*value == ' ' || *value == '\t' || *value == '\r' || *value == '\n') {
+        ++value;
+    }
+    return *value == '\0' || *value == ',' || *value == '}' || *value == ']';
+}
+
 static bool parse_u32(const char *value, uint32_t *result) {
     if (value == NULL || result == NULL || *value < '0' || *value > '9') {
         return false;
@@ -298,6 +305,9 @@ static bool parse_u32(const char *value, uint32_t *result) {
         }
         parsed = parsed * 10U + digit;
         ++value;
+    }
+    if (!json_scalar_ended(value)) {
+        return false;
     }
     *result = parsed;
     return true;
@@ -314,19 +324,26 @@ static bool parse_brightness(const char *value, uint8_t *result) {
         ++value;
     }
 
-    if (whole_nonzero) {
-        *result = 255;
-        return true;
-    }
-
     uint32_t fraction = 0;
     uint32_t scale    = 1;
     if (*value == '.') {
         ++value;
-        for (uint8_t digits = 0; digits < 4 && *value >= '0' && *value <= '9'; ++digits, ++value) {
-            fraction = fraction * 10U + (uint32_t)(*value - '0');
-            scale *= 10U;
+        if (*value < '0' || *value > '9') {
+            return false;
         }
+        for (size_t digits = 0; *value >= '0' && *value <= '9'; ++digits, ++value) {
+            if (digits < 4) {
+                fraction = fraction * 10U + (uint32_t)(*value - '0');
+                scale *= 10U;
+            }
+        }
+    }
+    if (!json_scalar_ended(value)) {
+        return false;
+    }
+    if (whole_nonzero) {
+        *result = 255;
+        return true;
     }
     *result = (uint8_t)((fraction * 255U + scale / 2U) / scale);
     return true;
@@ -336,11 +353,11 @@ static bool parse_bool(const char *value, bool *result) {
     if (value == NULL || result == NULL) {
         return false;
     }
-    if (*value == '1' || strncmp(value, "true", 4) == 0) {
+    if ((*value == '1' && json_scalar_ended(value + 1)) || (strncmp(value, "true", 4) == 0 && json_scalar_ended(value + 4))) {
         *result = true;
         return true;
     }
-    if (*value == '0' || strncmp(value, "false", 5) == 0) {
+    if ((*value == '0' && json_scalar_ended(value + 1)) || (strncmp(value, "false", 5) == 0 && json_scalar_ended(value + 5))) {
         *result = false;
         return true;
     }

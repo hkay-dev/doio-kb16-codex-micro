@@ -384,6 +384,8 @@ int main(void) {
     assert(codex_micro_slot_state(0) == CODEX_MICRO_SLOT_IDLE);
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":4294967296,\"c\":16711731,\"b\":1,\"e\":\"solid\"}],\"id\":421}");
     assert(codex_micro_slot_state(0) == CODEX_MICRO_SLOT_IDLE);
+    feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0x,\"c\":16711731,\"b\":1,\"e\":\"solid\"}],\"id\":4211}");
+    assert(codex_micro_slot_state(0) == CODEX_MICRO_SLOT_IDLE);
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":4294967296,\"e\":\"solid\"}],\"id\":422}");
     assert(codex_micro_slot_state(0) == CODEX_MICRO_SLOT_IDLE);
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"}],\"id\":423}");
