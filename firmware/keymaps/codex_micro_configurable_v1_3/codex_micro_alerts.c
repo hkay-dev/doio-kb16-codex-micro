@@ -288,14 +288,18 @@ void codex_micro_alerts_cancel_preview(uint32_t now) {
     }
 }
 
-void codex_micro_alerts_acknowledge_completion(uint8_t slot, uint32_t now) {
-    uint8_t mask = (uint8_t)(1U << CODEX_MICRO_ALERT_COMPLETION);
-    if ((pending_mask & mask) != 0 && pending_slots[CODEX_MICRO_ALERT_COMPLETION] == slot) {
-        pending_mask &= (uint8_t)~mask;
-        pending_manual_mask &= (uint8_t)~mask;
-        pending_slots[CODEX_MICRO_ALERT_COMPLETION] = CODEX_MICRO_ALERT_NO_SLOT;
+void codex_micro_alerts_acknowledge_slot(uint8_t slot, uint32_t now) {
+    const codex_micro_alert_t acknowledged[] = {CODEX_MICRO_ALERT_COMPLETION, CODEX_MICRO_ALERT_REMINDER};
+    for (uint8_t index = 0; index < sizeof(acknowledged) / sizeof(acknowledged[0]); ++index) {
+        codex_micro_alert_t alert = acknowledged[index];
+        uint8_t mask = (uint8_t)(1U << alert);
+        if ((pending_mask & mask) != 0 && pending_slots[alert] == slot) {
+            pending_mask &= (uint8_t)~mask;
+            pending_manual_mask &= (uint8_t)~mask;
+            pending_slots[alert] = CODEX_MICRO_ALERT_NO_SLOT;
+        }
     }
-    if (active_alert == CODEX_MICRO_ALERT_COMPLETION && active_slot == slot) start_next(now);
+    if ((active_alert == CODEX_MICRO_ALERT_COMPLETION || active_alert == CODEX_MICRO_ALERT_REMINDER) && active_slot == slot) start_next(now);
 }
 
 codex_micro_alert_t codex_micro_alerts_active(void) {

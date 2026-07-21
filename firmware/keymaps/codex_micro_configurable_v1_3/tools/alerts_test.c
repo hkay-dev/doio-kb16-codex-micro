@@ -94,7 +94,7 @@ int main(void) {
     assert(first.amount > 240);
     codex_micro_alerts_tick(115000);
     assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_COMPLETION);
-    codex_micro_alerts_acknowledge_completion(1, 115001);
+    codex_micro_alerts_acknowledge_slot(1, 115001);
     assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_NONE);
 
     changed.completion_repeats = 1;
@@ -104,7 +104,7 @@ int main(void) {
     assert(codex_micro_alerts_sample(0, 0, 16, 120375, &first));
     assert(codex_micro_alerts_sample(15, 0, 16, 120375, &distant));
     assert(first.amount > distant.amount);
-    codex_micro_alerts_acknowledge_completion(0, 120376);
+    codex_micro_alerts_acknowledge_slot(0, 120376);
 
     changed.alert_layout = CODEX_MICRO_ALERT_LAYOUT_PERIMETER;
     codex_micro_settings_apply(&changed);
@@ -131,6 +131,13 @@ int main(void) {
     changed.flags |= CODEX_MICRO_SETTING_MUTED;
     codex_micro_settings_apply(&changed);
     codex_micro_alerts_tick(140001);
+    assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_NONE);
+
+    changed.flags &= (uint8_t)~CODEX_MICRO_SETTING_MUTED;
+    changed.completion_repeats = 1;
+    codex_micro_settings_apply(&changed);
+    assert(codex_micro_alerts_queue(CODEX_MICRO_ALERT_REMINDER, 3, 150000, false));
+    codex_micro_alerts_acknowledge_slot(3, 150001);
     assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_NONE);
 
     puts("Codex Micro alert tests passed");

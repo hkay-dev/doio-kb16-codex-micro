@@ -557,7 +557,7 @@ static void update_thread_lighting(const char *params) {
                 } else if (current != CODEX_MICRO_SLOT_COMPLETE) {
                     reminder_started_at[id] = 0;
                     reminder_acknowledged[id] = false;
-                    codex_micro_alerts_acknowledge_completion((uint8_t)id, now);
+                    codex_micro_alerts_acknowledge_slot((uint8_t)id, now);
                 }
                 if (thread_snapshot_seen && previous != current && current == CODEX_MICRO_SLOT_ATTENTION) {
                     codex_micro_alerts_queue(CODEX_MICRO_ALERT_APPROVAL, (uint8_t)id, now, false);
@@ -706,7 +706,7 @@ void codex_micro_send_agent_key(uint8_t slot, bool pressed) {
     uint8_t mask = (uint8_t)(1U << slot);
     if (pressed) {
         reminder_acknowledged[slot] = true;
-        codex_micro_alerts_acknowledge_completion(slot, timer_read32());
+        codex_micro_alerts_acknowledge_slot(slot, timer_read32());
         if (!host_seen) {
             show_no_link();
             return;

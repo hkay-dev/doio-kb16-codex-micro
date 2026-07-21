@@ -23,7 +23,7 @@ bool codex_micro_alerts_queue(codex_micro_alert_t alert, uint8_t slot, uint32_t 
 void codex_micro_alerts_tick(uint32_t now);
 bool codex_micro_alerts_sample(uint8_t position, uint8_t origin_position, uint8_t led_count, uint32_t now, codex_micro_alert_sample_t *sample);
 void codex_micro_alerts_cancel_preview(uint32_t now);
-void codex_micro_alerts_acknowledge_completion(uint8_t slot, uint32_t now);
+void codex_micro_alerts_acknowledge_slot(uint8_t slot, uint32_t now);
 codex_micro_alert_t codex_micro_alerts_active(void);
 uint8_t codex_micro_alerts_active_slot(void);
 uint8_t codex_micro_alerts_pending_mask(void);
