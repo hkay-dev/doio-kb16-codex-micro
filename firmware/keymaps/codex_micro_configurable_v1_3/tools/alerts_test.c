@@ -125,6 +125,14 @@ int main(void) {
     codex_micro_alerts_tick(133400);
     assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_NONE);
 
+    changed.completion_repeats = CODEX_MICRO_COMPLETION_UNTIL_FOCUS;
+    codex_micro_settings_apply(&changed);
+    assert(codex_micro_alerts_queue(CODEX_MICRO_ALERT_COMPLETION, 1, 140000, false));
+    changed.flags |= CODEX_MICRO_SETTING_MUTED;
+    codex_micro_settings_apply(&changed);
+    codex_micro_alerts_tick(140001);
+    assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_NONE);
+
     puts("Codex Micro alert tests passed");
     return 0;
 }

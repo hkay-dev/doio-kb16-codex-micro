@@ -155,8 +155,10 @@ static void start_next(uint32_t now) {
 }
 
 void codex_micro_alerts_tick(uint32_t now) {
-    if (active_alert != CODEX_MICRO_ALERT_NONE && now - active_started_at >= active_duration) {
-        start_next(now);
+    if (active_alert != CODEX_MICRO_ALERT_NONE) {
+        if ((!active_manual && !automatic_enabled(active_alert)) || now - active_started_at >= active_duration) {
+            start_next(now);
+        }
     }
 }
 
