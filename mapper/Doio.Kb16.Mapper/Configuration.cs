@@ -89,12 +89,16 @@ public sealed class DeviceConfiguration
     public void Validate()
     {
         if (SchemaVersion != 1) throw new InvalidDataException("Only configuration schema 1 is supported.");
+        if (NativeKeys is null || CodexEncoders is null || Layers is null)
+            throw new InvalidDataException("The configuration is missing its native keys, Codex encoders, or layers.");
         if (NativeKeys.Length != 16 || NativeKeys.Distinct().Count() != 16 || NativeKeys.Any(value => (byte)value >= 16))
             throw new InvalidDataException("The Codex layer must have exactly 16 distinct native controls.");
         if (CodexEncoders.Length != 6 || Layers.Length != 3) throw new InvalidDataException("The encoder or layer count is invalid.");
         ValidateActions(CodexEncoders);
         foreach (var layer in Layers)
         {
+            if (layer is null || layer.Keys is null || layer.Encoders is null)
+                throw new InvalidDataException("An ordinary layer is missing its keys or encoder actions.");
             if (layer.Keys.Length != 16 || layer.Encoders.Length != 9) throw new InvalidDataException("Each ordinary layer must have 16 keys and 9 encoder actions.");
             ValidateActions(layer.Keys);
             ValidateActions(layer.Encoders);
@@ -105,6 +109,7 @@ public sealed class DeviceConfiguration
     {
         foreach (var action in actions)
         {
+            if (action is null) throw new InvalidDataException("The configuration has a missing action.");
             var valid = action.Kind switch
             {
                 ActionKind.None => action.Modifiers == 0 && action.Code == 0,

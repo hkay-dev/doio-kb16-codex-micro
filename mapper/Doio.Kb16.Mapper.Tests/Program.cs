@@ -26,6 +26,27 @@ if (args.Contains("--device", StringComparer.OrdinalIgnoreCase))
 
 var golden = new DeviceConfiguration();
 var bytes = golden.ToBinary();
+var missingLayers = new DeviceConfiguration { Layers = null! };
+try
+{
+    missingLayers.Validate();
+    throw new InvalidOperationException("missing layers accepted");
+}
+catch (InvalidDataException exception)
+{
+    Check(exception.Message.Contains("missing", StringComparison.OrdinalIgnoreCase), "missing layers report a useful import error");
+}
+var missingAction = new DeviceConfiguration();
+missingAction.Layers[0].Keys[0] = null!;
+try
+{
+    missingAction.Validate();
+    throw new InvalidOperationException("missing action accepted");
+}
+catch (InvalidDataException exception)
+{
+    Check(exception.Message.Contains("missing action", StringComparison.OrdinalIgnoreCase), "missing actions report a useful import error");
+}
 Check(bytes.Length == 340, "payload size");
 Check(bytes.AsSpan(0, 16).SequenceEqual(Enumerable.Range(0, 16).Select(value => (byte)value).ToArray()), "native order");
 Check(bytes.AsSpan(16).IndexOfAnyExcept((byte)0) == -1, "zero action vector");
