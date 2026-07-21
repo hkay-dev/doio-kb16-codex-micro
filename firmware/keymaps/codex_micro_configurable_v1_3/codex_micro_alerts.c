@@ -100,11 +100,16 @@ bool codex_micro_alerts_queue(codex_micro_alert_t alert, uint8_t slot, uint32_t 
     if (alert <= CODEX_MICRO_ALERT_NONE || alert >= CODEX_MICRO_ALERT_COUNT || (!manual && !automatic_enabled(alert))) {
         return false;
     }
-    if (active_alert == alert) {
-        if (manual) {
-            start_alert(alert, slot, now, true);
-            return true;
+    if (manual) {
+        if (active_alert != CODEX_MICRO_ALERT_NONE && !active_manual) {
+            pending_mask |= (uint8_t)(1U << active_alert);
+            pending_manual_mask &= (uint8_t)~(1U << active_alert);
+            pending_slots[active_alert] = active_slot;
         }
+        start_alert(alert, slot, now, true);
+        return true;
+    }
+    if (active_alert == alert) {
         if (active_slot != slot) {
             pending_mask |= (uint8_t)(1U << alert);
             pending_manual_mask &= (uint8_t)~(1U << alert);
@@ -122,8 +127,7 @@ bool codex_micro_alerts_queue(codex_micro_alert_t alert, uint8_t slot, uint32_t 
         return true;
     }
     pending_mask |= (uint8_t)(1U << alert);
-    if (manual) pending_manual_mask |= (uint8_t)(1U << alert);
-    else pending_manual_mask &= (uint8_t)~(1U << alert);
+    pending_manual_mask &= (uint8_t)~(1U << alert);
     pending_slots[alert] = slot;
     return true;
 }

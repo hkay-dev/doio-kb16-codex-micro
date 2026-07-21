@@ -29,6 +29,13 @@ int main(void) {
     assert(codex_micro_alerts_active_slot() == 4);
     assert((codex_micro_alerts_pending_mask() & (1U << CODEX_MICRO_ALERT_APPROVAL)) != 0);
 
+    assert(codex_micro_alerts_queue(CODEX_MICRO_ALERT_COMPLETION, 1, 450, true));
+    assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_COMPLETION);
+    assert(codex_micro_alerts_active_slot() == 1);
+    codex_micro_alerts_cancel_preview(451);
+    assert(codex_micro_alerts_active() == CODEX_MICRO_ALERT_ERROR);
+    assert(codex_micro_alerts_active_slot() == 4);
+
     codex_micro_alert_sample_t sample;
     assert(codex_micro_alerts_sample(0, 0xFF, 16, 700, &sample));
     assert(sample.color == 0xFF0033U);
