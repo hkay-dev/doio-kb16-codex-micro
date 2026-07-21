@@ -381,6 +381,9 @@ int main(void) {
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"},{\"id\":1,\"c\":255,\"b\":0.5,\"e\":\"breath\"},{\"id\":2,\"c\":16739584,\"b\":0.5,\"e\":\"solid\"},{\"id\":3,\"c\":16711731,\"b\":0.5,\"e\":\"solid\"},{\"id\":4,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"},{\"id\":5,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"}],\"id\":42}");
     expect_output_contains("\"id\":42");
     expect_output_contains("\"ok\":true");
+    assert(codex_micro_slot_state(0) == CODEX_MICRO_SLOT_IDLE);
+    feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":4294967296,\"c\":16711731,\"b\":1,\"e\":\"solid\"}],\"id\":421}");
+    assert(codex_micro_slot_state(0) == CODEX_MICRO_SLOT_IDLE);
 
     fake_timer = 800;
     memset(colors, 0, sizeof(colors));

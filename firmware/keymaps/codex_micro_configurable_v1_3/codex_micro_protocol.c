@@ -292,7 +292,11 @@ static bool parse_u32(const char *value, uint32_t *result) {
 
     uint32_t parsed = 0;
     while (*value >= '0' && *value <= '9') {
-        parsed = parsed * 10U + (uint32_t)(*value - '0');
+        uint32_t digit = (uint32_t)(*value - '0');
+        if (parsed > (UINT32_MAX - digit) / 10U) {
+            return false;
+        }
+        parsed = parsed * 10U + digit;
         ++value;
     }
     *result = parsed;
