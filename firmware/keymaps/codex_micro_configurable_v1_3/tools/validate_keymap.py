@@ -46,6 +46,7 @@ def main():
                   "case KB16_ACTION_FIRMWARE", "register_code((uint8_t)action->code)",
                   "unregister_code((uint8_t)action->code)", "update_action_modifiers(action->modifiers, false)"):
         require(keymap, token, f"missing action press/release path: {token}")
+    assert keymap.count("kb16_config_input_released();") == 3, "input releases must only match tracked key and encoder presses"
 
     for token in ("KB16_CONFIG_PAYLOAD_SIZE 340", "KB16_CONFIG_SLOT_SIZE 356",
                   "KB16_CONFIG_STORAGE_SIZE (KB16_CONFIG_SLOT_SIZE * 2)", "KB16_CONFIG_SCHEMA_VERSION 1",

@@ -331,8 +331,8 @@ static void handle_matrix_key(uint8_t position, bool pressed) {
         if (held->active) {
             held->native ? execute_native(held->native_control, false) : execute_action(&held->action, false);
             held->active = false;
+            kb16_config_input_released();
         }
-        kb16_config_input_released();
     }
 }
 
@@ -383,8 +383,10 @@ static void handle_encoder_press(uint8_t encoder, bool pressed) {
             if (middle_pressed && !middle_long_fired) {
                 tap_action(&middle_short_action);
             }
-            middle_pressed = false;
-            kb16_config_input_released();
+            if (middle_pressed) {
+                middle_pressed = false;
+                kb16_config_input_released();
+            }
         }
         return;
     }
@@ -407,8 +409,8 @@ static void handle_encoder_press(uint8_t encoder, bool pressed) {
         if (held->active) {
             held->native ? codex_micro_send_encoder_press(false) : execute_action(&held->action, false);
             held->active = false;
+            kb16_config_input_released();
         }
-        kb16_config_input_released();
     }
 }
 
