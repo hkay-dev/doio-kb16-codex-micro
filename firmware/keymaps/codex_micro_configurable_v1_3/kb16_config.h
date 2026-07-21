@@ -106,9 +106,9 @@ typedef struct __attribute__((packed)) {
 } kb16_config_payload_t;
 
 void kb16_config_init(void);
-void kb16_config_reset_defaults(void);
 bool kb16_config_commit(const kb16_config_payload_t *payload);
 bool kb16_config_validate(const kb16_config_payload_t *payload);
+bool kb16_config_reset_defaults(void);
 
 const kb16_config_payload_t *kb16_config_get(void);
 const kb16_action_t *kb16_config_key_action(uint8_t layer, uint8_t position);

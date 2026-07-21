@@ -263,7 +263,7 @@ bool kb16_config_commit(const kb16_config_payload_t *payload) {
     return true;
 }
 
-void kb16_config_reset_defaults(void) {
+bool kb16_config_reset_defaults(void) {
     uint8_t erased[KB16_CONFIG_STORAGE_SIZE];
     memset(erased, 0, sizeof(erased));
     kb16_user_storage_write(erased, 0, sizeof(erased));
@@ -273,7 +273,7 @@ void kb16_config_reset_defaults(void) {
     active_generation = 0;
     active_crc = 0;
     active_config = default_config;
-    (void)kb16_config_commit(&default_config);
+    return kb16_config_commit(&default_config);
 }
 
 void kb16_config_init(void) {
@@ -284,7 +284,7 @@ void kb16_config_init(void) {
     bool second_valid = slot_valid(&slots[1]);
     pressed_count = 0;
     if (!first_valid && !second_valid) {
-        kb16_config_reset_defaults();
+        (void)kb16_config_reset_defaults();
     } else if (second_valid && (!first_valid || generation_newer(slots[1].generation, slots[0].generation))) {
         activate_slot(&slots[1], 1);
     } else {
@@ -358,6 +358,6 @@ bool kb16_config_input_busy(void) {
 
 #ifndef CODEX_MICRO_HOST_TEST
 void eeconfig_init_user(void) {
-    kb16_config_reset_defaults();
+    (void)kb16_config_reset_defaults();
 }
 #endif

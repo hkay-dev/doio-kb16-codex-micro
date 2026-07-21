@@ -270,8 +270,8 @@ bool kb16_config_transport_receive(uint8_t *data, uint8_t length) {
             } else if (kb16_config_input_busy()) {
                 send_status(opcode, request_id, KB16_CONFIG_STATUS_BUSY);
             } else {
-                kb16_config_reset_defaults();
-                send_status(opcode, request_id, KB16_CONFIG_STATUS_OK);
+                bool reset = kb16_config_reset_defaults();
+                send_status(opcode, request_id, reset ? KB16_CONFIG_STATUS_OK : KB16_CONFIG_STATUS_STORAGE_ERROR);
             }
             break;
         case KB16_CONFIG_OP_READ_LIGHTING:

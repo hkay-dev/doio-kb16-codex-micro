@@ -59,11 +59,16 @@ int main(void) {
     assert(kb16_config_generation() == 1);
     assert_default_native();
 
-    kb16_config_reset_defaults();
+    assert(kb16_config_reset_defaults());
     assert_default_native();
     kb16_config_init();
     assert_default_native();
     assert(kb16_config_generation() == 1);
+
+    kb16_config_host_corrupt_slot(0, 20);
+    kb16_config_host_fail_writes(true);
+    assert(!kb16_config_reset_defaults());
+    kb16_config_host_fail_writes(false);
     puts("KB16 configuration tests passed");
     return 0;
 }

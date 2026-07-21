@@ -322,7 +322,13 @@ static void test_config_transport(void) {
     feed_config_packet(5, 0x3007, 0, 1, NULL, 0);
     expect_config_status(5, 0x3007, 9);
 
-    kb16_config_reset_defaults();
+    kb16_config_host_corrupt_slot(0, 20);
+    kb16_config_host_fail_writes(true);
+    feed_config_packet(6, 0x3009, 0, 1, NULL, 0);
+    expect_config_status(6, 0x3009, 8);
+    kb16_config_host_fail_writes(false);
+    feed_config_packet(6, 0x3010, 0, 1, NULL, 0);
+    expect_config_status(6, 0x3010, 0);
     test_lighting_transport();
 }
 
@@ -398,7 +404,7 @@ int main(void) {
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
     assert(colors[15][0] == 0 && colors[15][1] == 0 && colors[15][2] > 0 && colors[15][2] < 128);
     assert(colors[1][0] == 107 && colors[1][1] == 105 && colors[1][2] == 128);
-    kb16_config_reset_defaults();
+    assert(kb16_config_reset_defaults());
 
     clear_reports();
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":65356,\"b\":1,\"e\":\"solid\"},{\"id\":1,\"c\":3166206,\"b\":1,\"e\":\"solid\"},{\"id\":2,\"c\":16739584,\"b\":1,\"e\":\"solid\"},{\"id\":3,\"c\":16711731,\"b\":1,\"e\":\"solid\"},{\"id\":4,\"c\":1193046,\"b\":1,\"e\":\"solid\"},{\"id\":5,\"c\":16777215,\"b\":1,\"e\":\"solid\"}],\"id\":43}");
