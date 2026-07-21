@@ -6,7 +6,7 @@
 void codex_micro_menu_init(void);
 bool codex_micro_menu_active(void);
 void codex_micro_menu_open(void);
-void codex_micro_menu_save_close(void);
+bool codex_micro_menu_save_close(void);
 void codex_micro_menu_cancel(void);
 void codex_micro_menu_navigate(bool clockwise);
 void codex_micro_menu_adjust(bool clockwise);

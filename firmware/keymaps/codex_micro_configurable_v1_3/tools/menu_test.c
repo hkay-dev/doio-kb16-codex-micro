@@ -81,6 +81,19 @@ int main(void) {
     assert(codex_micro_settings_host_write_count() == 1);
 
     codex_micro_menu_open();
+    codex_micro_menu_navigate(true);
+    codex_micro_menu_select();
+    codex_micro_menu_adjust(true);
+    kb16_config_host_fail_writes(true);
+    assert(!codex_micro_menu_save_close());
+    assert(codex_micro_menu_active());
+    codex_micro_menu_lines(lines);
+    assert(strcmp(lines[0], "6/8 SAVE FAILED") == 0);
+    kb16_config_host_fail_writes(false);
+    assert(codex_micro_menu_save_close());
+    assert(!codex_micro_menu_active());
+
+    codex_micro_menu_open();
     for (uint8_t i = 0; i < 7; ++i) codex_micro_menu_navigate(true);
     codex_micro_menu_select();
     codex_micro_menu_lines(lines);

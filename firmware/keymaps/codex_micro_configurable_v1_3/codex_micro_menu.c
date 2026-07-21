@@ -14,6 +14,7 @@ static uint8_t cursor;
 static codex_micro_settings_t opening;
 static codex_micro_settings_t draft;
 static bool reset_armed;
+static bool save_failed;
 
 static const char *on_off(bool value) { return value ? "ON" : "OFF"; }
 static void apply(void) { codex_micro_settings_apply(&draft); }
@@ -29,7 +30,7 @@ static void close_common(void) {
     codex_micro_cancel_previews();
 }
 
-void codex_micro_menu_init(void) { active = false; page = PAGE_ROOT; cursor = 0; reset_armed = false; }
+void codex_micro_menu_init(void) { active = false; page = PAGE_ROOT; cursor = 0; reset_armed = false; save_failed = false; }
 bool codex_micro_menu_active(void) { return active; }
 void codex_micro_menu_open(void) {
     opening = *codex_micro_settings_get();
@@ -38,12 +39,23 @@ void codex_micro_menu_open(void) {
     page = PAGE_ROOT;
     cursor = 0;
     reset_armed = false;
+    save_failed = false;
 }
-void codex_micro_menu_save_close(void) { codex_micro_settings_save(&draft); close_common(); }
+bool codex_micro_menu_save_close(void) {
+    if (!codex_micro_settings_save(&draft)) {
+        page = PAGE_ROOT;
+        cursor = 5;
+        save_failed = true;
+        return false;
+    }
+    close_common();
+    return true;
+}
 void codex_micro_menu_cancel(void) { codex_micro_settings_apply(&opening); close_common(); }
 void codex_micro_menu_navigate(bool clockwise) {
     codex_micro_cancel_previews();
     reset_armed = false;
+    save_failed = false;
     cursor = clockwise ? (uint8_t)((cursor + 1U) % count()) : (uint8_t)((cursor + count() - 1U) % count());
 }
 static uint8_t step(uint8_t value, uint8_t minimum, uint8_t maximum, uint8_t amount, bool up) {
@@ -51,6 +63,7 @@ static uint8_t step(uint8_t value, uint8_t minimum, uint8_t maximum, uint8_t amo
     return value < minimum + amount ? minimum : (uint8_t)(value - amount);
 }
 void codex_micro_menu_adjust(bool clockwise) {
+    save_failed = false;
     switch (page) {
         case PAGE_ALERTS:
             if (cursor == 0) toggle(CODEX_MICRO_SETTING_COMPLETION_ENABLED);
@@ -81,9 +94,10 @@ void codex_micro_menu_adjust(bool clockwise) {
 }
 static void toggle(uint8_t flag) { draft.flags ^= flag; apply(); }
 void codex_micro_menu_select(void) {
+    if (!(page == PAGE_ROOT && cursor == 5)) save_failed = false;
     if (page == PAGE_ROOT) {
         if (cursor < 5) { page = (menu_page_t)(cursor + 1U); cursor = 0; return; }
-        if (cursor == 5) { codex_micro_menu_save_close(); return; }
+        if (cursor == 5) { (void)codex_micro_menu_save_close(); return; }
         if (cursor == 6) { codex_micro_menu_cancel(); return; }
         if (!reset_armed) { reset_armed = true; return; }
         codex_micro_settings_defaults(&draft); apply(); reset_armed = false; return;
@@ -113,9 +127,15 @@ void codex_micro_menu_lines(char lines[4][22]) {
     char value_buffer[18];
 
     if (page == PAGE_ROOT) {
-        name = cursor == 7 && reset_armed ? "CONFIRM RESET" : root[cursor];
-        value = cursor == 7 && reset_armed ? "Press Right again" : root_detail1[cursor];
-        context = cursor == 7 && reset_armed ? "or press M back" : root_detail2[cursor];
+        if (cursor == 5 && save_failed) {
+            name = "SAVE FAILED";
+            value = "Hold Right retry";
+            context = "Settings kept live";
+        } else {
+            name = cursor == 7 && reset_armed ? "CONFIRM RESET" : root[cursor];
+            value = cursor == 7 && reset_armed ? "Press Right again" : root_detail1[cursor];
+            context = cursor == 7 && reset_armed ? "or press M back" : root_detail2[cursor];
+        }
     } else if (page == PAGE_PREVIEW) {
         name = previews[cursor];
         value = cursor == 10 ? "Shows 6 states" : "Press Right to run";
