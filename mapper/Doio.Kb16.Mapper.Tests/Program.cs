@@ -35,12 +35,12 @@ foreach (var kind in Enum.GetValues<ActionKind>())
     Check(ActionCatalog.All.Any(option => option.Action.Kind == kind), $"action catalog missing {kind}");
 Check(ActionCatalog.All.Any(option => option.Action.Kind == ActionKind.Firmware && option.Action.Code == 14), "guarded bootloader action");
 var noLinkAction = new ActionDescriptor { Kind = ActionKind.Firmware, Code = 15 };
-Check(!ActionCatalog.Filter("媒体", string.Empty).Any(option => option.Action.Kind == noLinkAction.Kind && option.Action.Code == noLinkAction.Code), "category filter test precondition");
+Check(!ActionCatalog.Filter("Media", string.Empty).Any(option => option.Action.Kind == noLinkAction.Kind && option.Action.Code == noLinkAction.Code), "category filter test precondition");
 var resetEditor = ActionEditorState.ForControl(noLinkAction);
 Check(resetEditor.Category == ActionEditorState.AllCategory && resetEditor.Search.Length == 0, "control selection resets action filters");
 Check(resetEditor.Options.Contains(resetEditor.SelectedOption!), "reset action list contains current mapping");
-Check(resetEditor.SelectedOption?.Name == "NO LINK 提示", "reset action selection shows current mapping");
-Check(ActionCatalog.Filter("键盘", string.Empty).All(option => option.Action.Kind is ActionKind.Keyboard or ActionKind.None), "composite keyboard category");
+Check(resetEditor.SelectedOption?.Name == "NO LINK prompt", "reset action selection shows current mapping");
+Check(ActionCatalog.Filter("Keyboard", string.Empty).All(option => option.Action.Kind is ActionKind.Keyboard or ActionKind.None), "composite keyboard category");
 Check(ActionCatalog.All.First(option => option.Name == "F24").CodeText == "01 00 0073", "action code presentation");
 
 var editingDraft = new DeviceConfiguration();
@@ -123,7 +123,7 @@ var committed = await commitSession.CommitAsync(new LightingValues(11, 22, 33));
 Check(committed.Enabled && committed.Mode == 1 && committed.Hue == 11, "lighting commit result");
 Check(await commitSession.RestoreAsync() is null && commitTransport.RestoreCount == 0, "lighting commit suppresses restore");
 
-var failedCommitTransport = new FakeLightingTransport { CommitException = new IOException("模拟保存失败") };
+var failedCommitTransport = new FakeLightingTransport { CommitException = new IOException("Simulated save failure") };
 var failedCommitSession = new LightingSessionCoordinator(failedCommitTransport);
 await failedCommitSession.BeginAsync();
 try
@@ -148,7 +148,7 @@ shutdownTransport.ReleasePreview.TrySetResult();
 await Task.WhenAll(shutdownPreview, shutdownRestore);
 Check(shutdownTransport.RestoreCount == 1, "shutdown restores after active lighting preview");
 
-var unsupportedTransport = new FakeLightingTransport { ReadException = new DeviceProtocolException(7, 2, "未知操作") };
+var unsupportedTransport = new FakeLightingTransport { ReadException = new DeviceProtocolException(7, 2, "Unknown operation") };
 try
 {
     await new LightingSessionCoordinator(unsupportedTransport).BeginAsync();
@@ -189,8 +189,8 @@ oneActionNew.Layers[0].Keys[0] = new ActionDescriptor { Kind = ActionKind.Keyboa
 var oneActionDiff = ConfigurationDiff.Compare(oneActionOld, oneActionNew);
 Check(oneActionDiff.ChangedControlCount == 1, "single action semantic count");
 Check(oneActionDiff.ByteDifference == 3, "single action byte count");
-Check(oneActionDiff.Changes[0].Location == "数字层 · 第 1 排第 1 列", "single action location");
-Check(oneActionDiff.Changes[0].OldValue == "无动作" && oneActionDiff.Changes[0].NewValue == "Ctrl+Alt+A", "single action description");
+Check(oneActionDiff.Changes[0].Location == "Number layer · Row 1, column 1", "single action location");
+Check(oneActionDiff.Changes[0].OldValue == "No action" && oneActionDiff.Changes[0].NewValue == "Ctrl+Alt+A", "single action description");
 
 var modifierOnly = oneActionNew.Clone();
 modifierOnly.Layers[0].Keys[0].Modifiers = 0x01;
@@ -205,7 +205,7 @@ Check(nativeDiff.ChangedControlCount == 2 && nativeDiff.ByteDifference == 2, "na
 var encoderChange = new DeviceConfiguration();
 encoderChange.CodexEncoders[1] = new ActionDescriptor { Kind = ActionKind.Consumer, Code = 1 };
 var encoderDiff = ConfigurationDiff.Compare(new DeviceConfiguration(), encoderChange);
-Check(encoderDiff.ChangedControlCount == 1 && encoderDiff.Changes[0].Location == "Codex 层 · 右旋钮 · 顺时针", "Codex encoder location");
+Check(encoderDiff.ChangedControlCount == 1 && encoderDiff.Changes[0].Location == "Codex layer · Right encoder · Clockwise", "Codex encoder location");
 
 var manyChanges = new DeviceConfiguration();
 for (var index = 0; index < 9; index++) manyChanges.Layers[1].Keys[index] = new ActionDescriptor { Kind = ActionKind.Keyboard, Code = (ushort)(0x04 + index) };
@@ -223,13 +223,13 @@ changedContent.Layers[0].Keys[0] = new ActionDescriptor { Kind = ActionKind.Keyb
 Check(!ConfigurationApplyGuard.Matches(2, expectedCrc, changedContent, current), "content mismatch blocked");
 
 var stalePresentation = DeviceErrorPresenter.Create(new DeviceStateChangedException(), DeviceOperation.Write);
-Check(stalePresentation.Title == "设备配置已变化" && !stalePresentation.Disconnect, "stale-state presentation");
-var busyPresentation = DeviceErrorPresenter.Create(new DeviceProtocolException(5, 7, "仍有按键按住"), DeviceOperation.Write);
-Check(busyPresentation.Title == "设备正忙" && !busyPresentation.Disconnect, "busy presentation");
-var verificationPresentation = DeviceErrorPresenter.Create(new ConfigurationVerificationException("回读不一致"), DeviceOperation.Write);
-Check(verificationPresentation.Title == "校验失败" && !verificationPresentation.Disconnect, "verification stays retryable");
-var conflictPresentation = DeviceErrorPresenter.Create(new DeviceConnectionException("被占用", true), DeviceOperation.Read);
-Check(conflictPresentation.Title == "设备连接失败" && conflictPresentation.Disconnect, "HID conflict presentation");
+Check(stalePresentation.Title == "Device Configuration Changed" && !stalePresentation.Disconnect, "stale-state presentation");
+var busyPresentation = DeviceErrorPresenter.Create(new DeviceProtocolException(5, 7, "A control is still held"), DeviceOperation.Write);
+Check(busyPresentation.Title == "Device Busy" && !busyPresentation.Disconnect, "busy presentation");
+var verificationPresentation = DeviceErrorPresenter.Create(new ConfigurationVerificationException("Readback mismatch"), DeviceOperation.Write);
+Check(verificationPresentation.Title == "Verification Failed" && !verificationPresentation.Disconnect, "verification stays retryable");
+var conflictPresentation = DeviceErrorPresenter.Create(new DeviceConnectionException("In use", true), DeviceOperation.Read);
+Check(conflictPresentation.Title == "Device Connection Failed" && conflictPresentation.Disconnect, "HID conflict presentation");
 
 try
 {
@@ -267,7 +267,7 @@ var wpfThread = new Thread(() =>
         smokeWindow.ShowLightingErrorForTesting();
         Check(smokeWindow.LightingErrorVisibleForTesting, "lighting inline error state");
         smokeWindow.SetLightingStateForTesting(new LightingState(false, 1, 170, 140, 0));
-        Check(smokeWindow.LightingToolTipForTesting.Contains("已关闭", StringComparison.Ordinal), "lighting off tooltip");
+        Check(smokeWindow.LightingToolTipForTesting.Contains("Off", StringComparison.Ordinal), "lighting off tooltip");
         smokeWindow.OpenLightingPopupForTesting();
         var keySource = PresentationSource.FromVisual(smokeWindow) ?? throw new InvalidOperationException("missing WPF presentation source");
         var escape = new KeyEventArgs(Keyboard.PrimaryDevice, keySource, Environment.TickCount, Key.Escape) { RoutedEvent = Keyboard.PreviewKeyDownEvent };
@@ -298,7 +298,7 @@ var wpfThread = new Thread(() =>
         disconnectedWindow.Show();
         disconnectedWindow.UpdateLayout();
         Check(!disconnectedWindow.IsConnectedPreviewVisible, "disconnected safe state");
-        Check(disconnectedWindow.LightingToolTipForTesting.Contains("设备未连接", StringComparison.Ordinal), "disconnected lighting tooltip");
+        Check(disconnectedWindow.LightingToolTipForTesting.Contains("Device not connected", StringComparison.Ordinal), "disconnected lighting tooltip");
         if (renderDirectory is not null) RenderWindow(disconnectedWindow, Path.Combine(renderDirectory, "mapper-disconnected-1180x760.png"));
         disconnectedWindow.Close();
 
@@ -396,7 +396,7 @@ sealed class FakeLightingTransport : ILightingTransport
             if (PreviewFailuresRemaining > 0)
             {
                 PreviewFailuresRemaining--;
-                throw new IOException("模拟预览失败");
+                throw new IOException("Simulated preview failure");
             }
             Current = Current with { Enabled = true, Hue = hue, Saturation = saturation, Value = value };
         }

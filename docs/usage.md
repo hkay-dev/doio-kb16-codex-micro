@@ -1,55 +1,57 @@
-# DOIO KB16 Codex Micro 使用教程
+# DOIO KB16 Codex Micro setup guide
 
-适用硬件：`DOIO KB16-01 Rev2 / APM32F103CBT6`。不要在 Rev1、ATmega32U4 版本或未确认硬件上刷写。
+Supported hardware is the `DOIO KB16-01 Rev2 / APM32F103CBT6`. Don't flash this onto Rev1, an ATmega32U4 model, or hardware you haven't identified.
 
-## 1. 下载文件
+## 1. Download the files
 
-从 GitHub Release `v1.3.5` 下载两个文件：
+Use the v1.4.0 firmware from this repo. If you want to edit the ordinary layers
+from Windows, grab the v1.3.5 Mapper package from the original project's
+[releases](https://github.com/hcyniubi/doio-kb16-codex-micro/releases).
 
-- 固件：`doio_kb16_rev2_codex_micro_configurable_v1_3_5_status_colors.bin`
-- Mapper：`Doio.Kb16.Mapper-v1.3.5-preview-complete.zip`
+- Firmware: `doio_kb16_rev2_codex_micro_oled_v1_4_0.bin`
+- Mapper: `Doio.Kb16.Mapper-v1.3.5-preview-complete.zip`
 
-校验 SHA-256：
+Check their SHA-256 hashes:
 
 ```text
-B21691424B22950562247E8B36D6307A0E0CCA481221C22592D9EE8ADBA45D0F  doio_kb16_rev2_codex_micro_configurable_v1_3_5_status_colors.bin
+C1B64E1CCA952C967DCE677601D1C3B131DF739DF4D64A26236BEB8ADC888BF9  doio_kb16_rev2_codex_micro_oled_v1_4_0.bin
 65FB2D298D27C5533A1EA400D0CAAB46465BFDB4D0B9FA7ABCB5E8CEB68DBB89  Doio.Kb16.Mapper-v1.3.5-preview-complete.zip
 ```
 
-## 2. 刷写固件
+## 2. Flash the firmware
 
-刷写前建议先备份原厂固件。真正可恢复的备份优先使用 SWD 全 Flash 读取；如果遇到读保护，请停止，不要解除保护或量产擦除。
+Back up the factory firmware before flashing if you can. A full SWD read of the entire flash is the preferred recoverable backup. If you hit readout protection, stop. Don't clear protection or do a mass erase.
 
-本仓库只提供已构建的 QMK BIN，不提供原厂固件。刷写时请确认：
+This repo only ships a built QMK BIN. It doesn't include the factory firmware. Check all of these before flashing:
 
-- 目标硬件是 `DOIO KB16-01 Rev2 / APM32F103CBT6`
-- Bootloader 是 Maple/STM32duino 路径
-- 选择的 BIN 文件名和 SHA-256 与上方一致
+- The target is a `DOIO KB16-01 Rev2 / APM32F103CBT6`.
+- The bootloader uses the Maple/STM32duino path.
+- The BIN filename and SHA-256 match the values above.
 
-刷写本身请使用你已经验证可用的本机流程。本项目的 Mapper 不会替你刷写固件。
+Use a local flashing process that you've already tested. This project's Mapper won't flash the firmware for you.
 
-## 3. 安装 ChatGPT Desktop
+## 3. Install ChatGPT Desktop
 
-Codex 层状态灯不需要 Bridge、Input、代理服务或后台程序。
+The Codex-layer status lights don't need a bridge, Work Louder Input, a proxy, or any background process.
 
-正常使用路径是：
+The normal data paths are:
 
 ```text
 ChatGPT Desktop -> Raw HID Channel 2 -> KB16 firmware -> Codex task/status lights
 Mapper          -> Raw HID Channel 3 -> KB16 EEPROM configuration
 ```
 
-在另一台 Windows x64 电脑上使用时，只需要：
+On another Windows x64 computer, you only need to:
 
-1. 安装并登录 ChatGPT Desktop。
-2. 连接已经刷入匹配固件的 KB16。
-3. 如需编辑键位或普通层灯光，复制完整 Mapper ZIP 或完整解压目录。
+1. Install ChatGPT Desktop and sign in.
+2. Connect a KB16 that already has the matching firmware.
+3. Copy the complete Mapper ZIP or its fully extracted folder if you want to edit key bindings or ordinary-layer lighting.
 
-不需要安装 .NET runtime、Work Louder Input、QMK 工具链或后台服务。
+You don't need the .NET runtime, Work Louder Input, a QMK toolchain, or a background service.
 
-## 4. 运行 Mapper
+## 4. Run the Mapper
 
-解压 `Doio.Kb16.Mapper-v1.3.5-preview-complete.zip`，保持七个文件在同一目录：
+Extract `Doio.Kb16.Mapper-v1.3.5-preview-complete.zip` and keep all seven files together:
 
 - `Doio.Kb16.Mapper.exe`
 - `Doio.Kb16.Mapper.pdb`
@@ -59,40 +61,51 @@ Mapper          -> Raw HID Channel 3 -> KB16 EEPROM configuration
 - `vcruntime140_cor3.dll`
 - `wpfgfx_cor3.dll`
 
-运行 `Doio.Kb16.Mapper.exe`。如果只复制 EXE，程序可能无法打开。
+Run `Doio.Kb16.Mapper.exe`. The app may not open if you copy only the EXE.
 
-## 5. 编辑键位
+## 5. Edit key bindings
 
-点击 `重新读取` 后，Mapper 会读取设备当前 Generation、CRC 和完整 340 字节配置。
+Click `Read Again` to read the device's current generation, CRC, and complete 340-byte configuration.
 
-- Codex 层：16 个原生控制只能互相交换，不能重复或缺失。左旋钮锁定为 Codex 原生旋钮。
-- Number / Navigation / System：可配置按键、媒体、鼠标、滚轮、层切换、RGB、OLED 亮度和受保护的 Bootloader 动作。
-- 修改只保存在本地草稿中，点击 `应用到设备` 并确认后才会写入键盘。
+- Codex layer: the 16 native controls may only swap positions. None can be duplicated or omitted. The left encoder stays locked to the native Codex encoder.
+- Number, Navigation, and System layers: keys can run keyboard, media, mouse, scroll, layer, RGB, OLED brightness, and protected bootloader actions.
+- Changes stay in a local draft until you click `Apply to Device` and confirm.
 
-写入前 Mapper 会再次读取设备快照。如果 Generation、CRC 或配置内容已经变化，写入会被阻止，避免覆盖别的编辑。
+The Mapper reads another device snapshot right before writing. It blocks the write if the generation, CRC, or configuration changed, which keeps it from overwriting another edit.
 
-## 6. 编辑普通层灯光
+## 6. Edit lighting
 
-v1.3.5 固件支持 Number、Navigation、System 三层共用一组普通层常亮 HSV 灯光。
+The Number, Navigation, and System layers share one solid HSV setting. The
+Windows Mapper edits that color.
 
-点击 `重新读取` 左侧的彩虹按钮可以打开灯光面板：
+Click the rainbow button to the left of `Read Again` to open the lighting panel:
 
-- 拖动 Brightness / Hue / Saturation 会即时预览，但不会写 EEPROM。
-- `保存灯光` 会持久化当前 HSV，并回读校验。
-- `取消` 或关闭弹窗会恢复打开面板前的完整 RGB Matrix 状态，不写 EEPROM。
+- Moving Brightness, Hue, or Saturation previews the change right away but doesn't write EEPROM.
+- `Save Lighting` stores the current HSV values and checks them by reading them back.
+- `Cancel` or closing the popup restores the complete RGB Matrix state from when you opened the panel and doesn't write EEPROM.
 
-Codex 层仍由 ChatGPT Desktop 通过 Channel 2 控制背景和六个任务状态灯。
+ChatGPT Desktop still controls the Codex layer's background and six task-status lights through Channel 2.
 
-## 7. 恢复和边界
+The Codex layer also has an on-device menu. Hold the top-right **Right** encoder
+for one second to open it. Turn Right to browse and press it to select. Turn the
+large **M** encoder to change a value, and press M to go back. Hold Right again
+to save and close.
 
-Mapper 可以请求固件恢复 v1.2 默认键位，但这会写入设备配置。执行前请确认当前导出的 JSON 或已知恢复路径。
+That menu controls alerts, repeats, reminders, alert layout, ambient area, idle
+glow, brightness, speed, night mode, OLED brightness, and the dashboard. It
+also has live previews for every app effect, every alert class, and all six
+task states.
 
-Mapper 不会：
+## 7. Recovery and limits
 
-- 刷写固件
-- 安装后台服务
-- 启动 Bridge 或 Input
-- 自动进入 Bootloader
-- 执行宏、文本输入、延迟序列或程序启动
+The Mapper can ask the firmware to restore the v1.2 default keymap, but that writes the device configuration. Confirm that you have an exported JSON file or another known recovery path first.
 
-如果遇到 HID 被占用，请关闭其他配置器后重新读取。
+The Mapper doesn't:
+
+- Flash firmware
+- Install a background service
+- Start a bridge or Work Louder Input
+- Enter the bootloader automatically
+- Run macros, type text, delay action sequences, or launch programs
+
+If another app has claimed the HID interface, close other configurators and read the device again.

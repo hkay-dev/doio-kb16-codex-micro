@@ -10,9 +10,9 @@ public sealed record ConfigurationDiffResult(IReadOnlyList<ConfigurationChange> 
 
 public static class ConfigurationDiff
 {
-    private static readonly string[] LayerNames = ["数字层", "导航层", "系统层"];
-    private static readonly string[] EncoderNames = ["左旋钮", "右旋钮", "中旋钮"];
-    private static readonly string[] EncoderActionNames = ["逆时针", "顺时针", "按压"];
+    private static readonly string[] LayerNames = ["Number layer", "Navigation layer", "System layer"];
+    private static readonly string[] EncoderNames = ["Left encoder", "Right encoder", "Middle encoder"];
+    private static readonly string[] EncoderActionNames = ["Counterclockwise", "Clockwise", "Press"];
 
     public static ConfigurationDiffResult Compare(DeviceConfiguration oldConfiguration, DeviceConfiguration newConfiguration)
     {
@@ -24,7 +24,7 @@ public static class ConfigurationDiff
         {
             if (oldConfiguration.NativeKeys[index] == newConfiguration.NativeKeys[index]) continue;
             changes.Add(new ConfigurationChange(
-                $"Codex 层 · {KeyPosition(index)}",
+                $"Codex layer · {KeyPosition(index)}",
                 NativeName(oldConfiguration.NativeKeys[index]),
                 NativeName(newConfiguration.NativeKeys[index])));
         }
@@ -33,7 +33,7 @@ public static class ConfigurationDiff
         {
             AddActionChange(
                 changes,
-                $"Codex 层 · {EncoderNames[index / 3 + 1]} · {EncoderActionNames[index % 3]}",
+                $"Codex layer · {EncoderNames[index / 3 + 1]} · {EncoderActionNames[index % 3]}",
                 oldConfiguration.CodexEncoders[index],
                 newConfiguration.CodexEncoders[index]);
         }
@@ -62,14 +62,14 @@ public static class ConfigurationDiff
         changes.Add(new ConfigurationChange(location, ActionCatalog.Describe(oldAction), ActionCatalog.Describe(newAction)));
     }
 
-    private static string KeyPosition(int index) => $"第 {index / 4 + 1} 排第 {index % 4 + 1} 列";
+    private static string KeyPosition(int index) => $"Row {index / 4 + 1}, column {index % 4 + 1}";
 
     private static string NativeName(NativeControl value) => value switch
     {
-        NativeControl.JoystickUp => "摇杆上",
-        NativeControl.JoystickRight => "摇杆右",
-        NativeControl.JoystickDown => "摇杆下",
-        NativeControl.JoystickLeft => "摇杆左",
+        NativeControl.JoystickUp => "Joystick up",
+        NativeControl.JoystickRight => "Joystick right",
+        NativeControl.JoystickDown => "Joystick down",
+        NativeControl.JoystickLeft => "Joystick left",
         NativeControl.MicACT10 => "Mic ACT10",
         _ => value.ToString(),
     };

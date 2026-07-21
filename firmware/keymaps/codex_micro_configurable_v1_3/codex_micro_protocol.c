@@ -7,37 +7,61 @@
 #include "oled_icons.h"
 #include "kb16_config.h"
 #include "kb16_config_transport.h"
+#include "codex_micro_alerts.h"
+#include "codex_micro_settings.h"
 #include "raw_hid.h"
 
 #define CODEX_MICRO_CHANNEL_RPC 2
 #define CODEX_MICRO_RX_BUFFER_SIZE 1024
 #define CODEX_MICRO_OBJECT_SIZE 256
-#define CODEX_MICRO_BREATH_MS 1600
+#define CODEX_MICRO_DEFAULT_EFFECT_MS 2400
 #define CODEX_MICRO_COOL_WHITE_RED 215
 #define CODEX_MICRO_COOL_WHITE_GREEN 211
 #define CODEX_MICRO_COOL_WHITE_BLUE 255
+#define CODEX_MICRO_IDLE_WARM_COLOR 0xFFD09AU
 #define CODEX_MICRO_STATUS_UNREAD_COLOR 0x00FF4CU
 #define CODEX_MICRO_STATUS_WORKING_COLOR 0x304FFEU
 #define CODEX_MICRO_STATUS_ATTENTION_COLOR 0xFF6D00U
 #define CODEX_MICRO_STATUS_ERROR_COLOR 0xFF0033U
 #define CODEX_MICRO_CUSTOM_UNREAD_COLOR 0x1FAB21U
-#define CODEX_MICRO_CUSTOM_WORKING_COLOR 0x1A48ABU
+#define CODEX_MICRO_CUSTOM_WORKING_COLOR 0x005CFFU
 #define CODEX_MICRO_CUSTOM_ATTENTION_COLOR 0xC76700U
 #define CODEX_MICRO_CUSTOM_ERROR_COLOR 0xC7144DU
 #define CODEX_MICRO_ALL_HOST_SLOTS_MASK ((1U << CODEX_MICRO_HOST_SLOT_COUNT) - 1U)
 
 typedef enum {
     CODEX_MICRO_EFFECT_OFF = 0,
-    CODEX_MICRO_EFFECT_STEADY,
-    CODEX_MICRO_EFFECT_BREATH,
+    CODEX_MICRO_EFFECT_SOLID = 1,
+    CODEX_MICRO_EFFECT_SNAKE = 2,
+    CODEX_MICRO_EFFECT_RAINBOW = 3,
+    CODEX_MICRO_EFFECT_BREATH = 4,
+    CODEX_MICRO_EFFECT_GRADIENT = 5,
+    CODEX_MICRO_EFFECT_SHALLOW_BREATH = 6,
 } codex_micro_effect_t;
 
 typedef struct {
     uint32_t             color;
     uint8_t              brightness;
+    uint8_t              speed;
     codex_micro_effect_t effect;
     bool                 assigned;
+    bool                 sync_keys;
+    bool                 sync_ambient;
 } codex_micro_light_t;
+
+typedef struct {
+    uint32_t             color;
+    uint8_t              brightness;
+    uint8_t              speed;
+    uint8_t              magic;
+    codex_micro_effect_t effect;
+} codex_micro_lighting_side_t;
+
+typedef struct {
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+} codex_micro_rgb_t;
 
 static codex_micro_light_t thread_lights[CODEX_MICRO_HOST_SLOT_COUNT];
 static char                rpc_buffer[CODEX_MICRO_RX_BUFFER_SIZE];
@@ -51,6 +75,25 @@ static uint8_t             joystick_press_order[CODEX_MICRO_JOYSTICK_DIRECTION_C
 static uint8_t             joystick_press_count;
 static uint8_t             global_brightness;
 static bool                lighting_off;
+static codex_micro_lighting_side_t ambient_lighting;
+static codex_micro_lighting_side_t keys_lighting;
+static bool                        lighting_config_seen;
+static bool                        thread_snapshot_seen;
+static codex_micro_lighting_side_t preview_lighting;
+static bool                        preview_lighting_active;
+static bool                        status_demo_active;
+static codex_micro_slot_state_t    slot_states[CODEX_MICRO_HOST_SLOT_COUNT];
+static uint32_t                    reminder_started_at[CODEX_MICRO_HOST_SLOT_COUNT];
+static bool                        reminder_acknowledged[CODEX_MICRO_HOST_SLOT_COUNT];
+
+// A continuous path across the physical 4x4 key grid. It keeps snake and
+// rainbow effects from jumping between opposite edges at each row boundary.
+static const uint8_t led_animation_position[RGB_MATRIX_LED_COUNT] = {
+    0, 1, 2, 3,
+    7, 6, 5, 4,
+    8, 9, 10, 11,
+    15, 14, 13, 12,
+};
 
 static const char   *const action_key_names[CODEX_MICRO_ACTION_COUNT] = {"ACT06", "ACT07", "ACT08", "ACT09", "ACT12", "ACT10"};
 static const char   *const joystick_angles[CODEX_MICRO_JOYSTICK_DIRECTION_COUNT] = {"0.75", "0.00", "0.25", "0.50"};
@@ -58,6 +101,22 @@ static const uint8_t agent_native_controls[CODEX_MICRO_TASK_KEY_COUNT] = {
     KB16_NATIVE_AG00, KB16_NATIVE_AG01, KB16_NATIVE_AG02,
     KB16_NATIVE_AG03, KB16_NATIVE_AG04, KB16_NATIVE_AG05,
 };
+
+static uint32_t display_thread_color(uint32_t color);
+
+static codex_micro_slot_state_t normalize_slot(const codex_micro_light_t *light) {
+    if (!light->assigned || light->effect == CODEX_MICRO_EFFECT_OFF || light->brightness == 0) {
+        return CODEX_MICRO_SLOT_OFF;
+    }
+    switch (light->color) {
+        case 0xFFFFFFU: return CODEX_MICRO_SLOT_IDLE;
+        case CODEX_MICRO_STATUS_WORKING_COLOR: return CODEX_MICRO_SLOT_WORKING;
+        case CODEX_MICRO_STATUS_UNREAD_COLOR: return CODEX_MICRO_SLOT_COMPLETE;
+        case CODEX_MICRO_STATUS_ATTENTION_COLOR: return CODEX_MICRO_SLOT_ATTENTION;
+        case CODEX_MICRO_STATUS_ERROR_COLOR: return CODEX_MICRO_SLOT_ERROR;
+        default: return CODEX_MICRO_SLOT_OTHER;
+    }
+}
 
 static void send_json(const char *json) {
     size_t json_length = strlen(json);
@@ -269,12 +328,59 @@ static bool parse_brightness(const char *value, uint8_t *result) {
     return true;
 }
 
+static bool parse_bool(const char *value, bool *result) {
+    if (value == NULL || result == NULL) {
+        return false;
+    }
+    if (*value == '1' || strncmp(value, "true", 4) == 0) {
+        *result = true;
+        return true;
+    }
+    if (*value == '0' || strncmp(value, "false", 5) == 0) {
+        *result = false;
+        return true;
+    }
+    return false;
+}
+
+static bool parse_effect(const char *value, codex_micro_effect_t *result) {
+    uint32_t numeric;
+    if (parse_u32(value, &numeric) && numeric <= CODEX_MICRO_EFFECT_SHALLOW_BREATH) {
+        *result = (codex_micro_effect_t)numeric;
+        return true;
+    }
+
+    char name[20];
+    if (!copy_json_string(value, name, sizeof(name))) {
+        return false;
+    }
+    if (strcmp(name, "off") == 0) {
+        *result = CODEX_MICRO_EFFECT_OFF;
+    } else if (strcmp(name, "solid") == 0) {
+        *result = CODEX_MICRO_EFFECT_SOLID;
+    } else if (strcmp(name, "snake") == 0) {
+        *result = CODEX_MICRO_EFFECT_SNAKE;
+    } else if (strcmp(name, "rainbow") == 0) {
+        *result = CODEX_MICRO_EFFECT_RAINBOW;
+    } else if (strcmp(name, "breath") == 0) {
+        *result = CODEX_MICRO_EFFECT_BREATH;
+    } else if (strcmp(name, "gradient") == 0) {
+        *result = CODEX_MICRO_EFFECT_GRADIENT;
+    } else if (strcmp(name, "shallowBreath") == 0 || strcmp(name, "shallow_breath") == 0) {
+        *result = CODEX_MICRO_EFFECT_SHALLOW_BREATH;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 static void mark_host_seen(void) {
     if (host_seen) {
         return;
     }
     host_seen = true;
     oled_controller_show_popup("CODEX MICRO", "CONNECTED", OLED_POPUP_NORMAL_MS);
+    codex_micro_alerts_queue(CODEX_MICRO_ALERT_RECONNECT, 0xFF, timer_read32(), false);
 }
 
 static void send_result(const char *id, const char *result) {
@@ -308,7 +414,9 @@ static int8_t update_thread_object(const char *object) {
     codex_micro_light_t *light = &thread_lights[id];
     uint32_t             color;
     uint8_t              brightness;
-    char                 effect[16];
+    uint8_t              speed;
+    codex_micro_effect_t effect;
+    bool                 sync;
 
     if (parse_u32(find_top_level_value(object, "c"), &color)) {
         light->color = color & 0xFFFFFFU;
@@ -316,24 +424,59 @@ static int8_t update_thread_object(const char *object) {
     if (parse_brightness(find_top_level_value(object, "b"), &brightness)) {
         light->brightness = brightness;
     }
-    if (copy_json_string(find_top_level_value(object, "e"), effect, sizeof(effect))) {
-        if (strcmp(effect, "off") == 0) {
-            light->effect   = CODEX_MICRO_EFFECT_OFF;
-            light->assigned = false;
-        } else if (strcmp(effect, "breath") == 0) {
-            light->effect   = CODEX_MICRO_EFFECT_BREATH;
-            light->assigned = true;
-        } else {
-            light->effect   = CODEX_MICRO_EFFECT_STEADY;
-            light->assigned = true;
-        }
+    if (parse_brightness(find_top_level_value(object, "s"), &speed)) {
+        light->speed = speed;
+    }
+    if (parse_bool(find_top_level_value(object, "sk"), &sync)) {
+        light->sync_keys = sync;
+    }
+    if (parse_bool(find_top_level_value(object, "sa"), &sync)) {
+        light->sync_ambient = sync;
+    }
+    if (parse_effect(find_top_level_value(object, "e"), &effect)) {
+        light->effect   = effect;
+        light->assigned = effect != CODEX_MICRO_EFFECT_OFF;
     } else if (light->color != 0 || light->brightness != 0) {
         light->assigned = true;
         if (light->effect == CODEX_MICRO_EFFECT_OFF) {
-            light->effect = CODEX_MICRO_EFFECT_STEADY;
+            light->effect = CODEX_MICRO_EFFECT_SOLID;
         }
     }
     return (int8_t)id;
+}
+
+static void update_lighting_side(const char *object, codex_micro_lighting_side_t *side) {
+    if (object == NULL || *object != '{') {
+        return;
+    }
+
+    uint32_t             value;
+    uint8_t              normalized;
+    codex_micro_effect_t effect;
+    if (parse_u32(find_top_level_value(object, "c"), &value)) {
+        side->color = value & 0xFFFFFFU;
+    }
+    if (parse_brightness(find_top_level_value(object, "b"), &normalized)) {
+        side->brightness = normalized;
+    }
+    if (parse_brightness(find_top_level_value(object, "s"), &normalized)) {
+        side->speed = normalized;
+    }
+    if (parse_u32(find_top_level_value(object, "m"), &value)) {
+        side->magic = (uint8_t)value;
+    }
+    if (parse_effect(find_top_level_value(object, "e"), &effect)) {
+        side->effect = effect;
+    }
+}
+
+static void update_lighting_config(const char *params) {
+    if (params == NULL || *params != '{') {
+        return;
+    }
+    update_lighting_side(find_top_level_value(params, "ambient"), &ambient_lighting);
+    update_lighting_side(find_top_level_value(params, "keys"), &keys_lighting);
+    lighting_config_seen = true;
 }
 
 static void apply_global_lighting(uint8_t brightness, bool off) {
@@ -364,6 +507,7 @@ static void update_thread_lighting(const char *params) {
 
     const char *cursor = params;
     uint8_t     seen_mask = 0;
+    uint32_t    now = timer_read32();
     while (*cursor != '\0' && *cursor != ']') {
         if (*cursor != '{') {
             ++cursor;
@@ -402,10 +546,30 @@ static void update_thread_lighting(const char *params) {
             int8_t id = update_thread_object(object);
             if (id >= 0) {
                 seen_mask |= (uint8_t)(1U << id);
+                const codex_micro_light_t *light = &thread_lights[id];
+                codex_micro_slot_state_t previous = slot_states[id];
+                codex_micro_slot_state_t current = normalize_slot(light);
+                slot_states[id] = current;
+                if (current == CODEX_MICRO_SLOT_COMPLETE && previous != current) {
+                    reminder_started_at[id] = now;
+                    reminder_acknowledged[id] = false;
+                    if (thread_snapshot_seen) codex_micro_alerts_queue(CODEX_MICRO_ALERT_COMPLETION, (uint8_t)id, now, false);
+                } else if (current != CODEX_MICRO_SLOT_COMPLETE) {
+                    reminder_started_at[id] = 0;
+                    reminder_acknowledged[id] = false;
+                    codex_micro_alerts_acknowledge_completion((uint8_t)id, now);
+                }
+                if (thread_snapshot_seen && previous != current && current == CODEX_MICRO_SLOT_ATTENTION) {
+                    codex_micro_alerts_queue(CODEX_MICRO_ALERT_APPROVAL, (uint8_t)id, now, false);
+                }
+                if (thread_snapshot_seen && previous != current && current == CODEX_MICRO_SLOT_ERROR) {
+                    codex_micro_alerts_queue(CODEX_MICRO_ALERT_ERROR, (uint8_t)id, now, false);
+                }
             }
         }
     }
     update_global_lighting(seen_mask);
+    thread_snapshot_seen = true;
 }
 
 static void handle_request(const char *json) {
@@ -425,7 +589,10 @@ static void handle_request(const char *json) {
     } else if (strcmp(method, "v.oai.thstatus") == 0) {
         update_thread_lighting(find_top_level_value(json, "params"));
         send_result(has_id ? id : NULL, "{\"ok\":true}");
-    } else if (strcmp(method, "v.oai.rgbcfg") == 0 || strcmp(method, "lights.preview") == 0 || strcmp(method, "host.focused_app") == 0) {
+    } else if (strcmp(method, "v.oai.rgbcfg") == 0) {
+        update_lighting_config(find_top_level_value(json, "params"));
+        send_result(has_id ? id : NULL, "{\"ok\":true}");
+    } else if (strcmp(method, "lights.preview") == 0 || strcmp(method, "host.focused_app") == 0) {
         send_result(has_id ? id : NULL, "{\"ok\":true}");
     } else {
         send_method_error(has_id ? id : NULL);
@@ -492,6 +659,7 @@ void codex_micro_init(void) {
     memset(thread_lights, 0, sizeof(thread_lights));
     for (uint8_t slot = 0; slot < CODEX_MICRO_HOST_SLOT_COUNT; ++slot) {
         thread_lights[slot].brightness = 255;
+        thread_lights[slot].speed      = 102;
     }
     rpc_length      = 0;
     host_seen       = false;
@@ -500,11 +668,34 @@ void codex_micro_init(void) {
     sent_encoder_press = false;
     joystick_held_mask = 0;
     joystick_press_count = 0;
+    memset(&ambient_lighting, 0, sizeof(ambient_lighting));
+    memset(&keys_lighting, 0, sizeof(keys_lighting));
+    memset(&preview_lighting, 0, sizeof(preview_lighting));
+    preview_lighting_active = false;
+    status_demo_active = false;
+    lighting_config_seen       = false;
+    thread_snapshot_seen       = false;
+    memset(slot_states, 0, sizeof(slot_states));
+    memset(reminder_started_at, 0, sizeof(reminder_started_at));
+    memset(reminder_acknowledged, 0, sizeof(reminder_acknowledged));
+    codex_micro_alerts_init();
     apply_global_lighting(0, true);
 }
 
 void codex_micro_task(void) {
     process_rpc_buffer();
+    uint32_t now = timer_read32();
+    uint32_t interval = codex_micro_settings_reminder_ms(codex_micro_settings_get());
+    if (interval > 0) {
+        for (uint8_t slot = 0; slot < CODEX_MICRO_HOST_SLOT_COUNT; ++slot) {
+            if (slot_states[slot] == CODEX_MICRO_SLOT_COMPLETE && !reminder_acknowledged[slot] &&
+                now - reminder_started_at[slot] >= interval) {
+                codex_micro_alerts_queue(CODEX_MICRO_ALERT_REMINDER, slot, now, false);
+                reminder_started_at[slot] = now;
+            }
+        }
+    }
+    codex_micro_alerts_tick(now);
 }
 
 void codex_micro_send_agent_key(uint8_t slot, bool pressed) {
@@ -514,6 +705,8 @@ void codex_micro_send_agent_key(uint8_t slot, bool pressed) {
 
     uint8_t mask = (uint8_t)(1U << slot);
     if (pressed) {
+        reminder_acknowledged[slot] = true;
+        codex_micro_alerts_acknowledge_completion(slot, timer_read32());
         if (!host_seen) {
             show_no_link();
             return;
@@ -631,11 +824,178 @@ void codex_micro_send_encoder_press(bool pressed) {
     send_hid_key_event("ENC_SW", pressed ? 1U : 0U);
 }
 
-static uint8_t breath_multiplier(void) {
-    uint16_t half = CODEX_MICRO_BREATH_MS / 2;
-    uint16_t tick = timer_read32() % CODEX_MICRO_BREATH_MS;
-    uint16_t ramp = tick < half ? tick : CODEX_MICRO_BREATH_MS - tick;
-    return (uint8_t)(90U + (uint32_t)165U * ramp / half);
+static uint8_t smoothstep8(uint8_t value) {
+    uint32_t squared = (uint32_t)value * value;
+    return (uint8_t)((squared * (765U - 2U * value) + 32512U) / 65025U);
+}
+
+static uint8_t pulse8(uint8_t phase) {
+    uint8_t triangle = phase < 128 ? (uint8_t)(phase * 2U) : (uint8_t)((255U - phase) * 2U);
+    return smoothstep8(triangle);
+}
+
+static uint16_t effect_period_ms(uint8_t speed) {
+    if (speed == 0) {
+        return CODEX_MICRO_DEFAULT_EFFECT_MS;
+    }
+    return (uint16_t)(4200U - (uint32_t)speed * 3200U / 255U);
+}
+
+static uint8_t effect_phase(uint32_t now, uint8_t speed) {
+    if (speed == 0) {
+        return 0;
+    }
+    uint16_t period = effect_period_ms(speed);
+    return (uint8_t)(((now % period) * 255U) / period);
+}
+
+static uint8_t adjusted_speed(uint8_t speed) {
+    if (speed == 0) return 0;
+    uint16_t scaled = (uint16_t)speed * codex_micro_settings_get()->speed_percent / 100U;
+    return scaled > 255U ? 255U : (uint8_t)scaled;
+}
+
+static uint8_t brightness_cap(void) {
+    const codex_micro_settings_t *settings = codex_micro_settings_get();
+    uint8_t cap = (uint8_t)((uint16_t)255U * settings->brightness_percent / 100U);
+    if ((settings->flags & CODEX_MICRO_SETTING_NIGHT_MODE) != 0 && cap > 89U) cap = 89U;
+    return cap;
+}
+
+static codex_micro_rgb_t scale_color(uint32_t color, uint8_t brightness, uint8_t multiplier) {
+    uint16_t level = (uint16_t)brightness * multiplier / 255U;
+    codex_micro_rgb_t result = {
+        .red   = (uint8_t)(((color >> 16) & 0xFFU) * level / 255U),
+        .green = (uint8_t)(((color >> 8) & 0xFFU) * level / 255U),
+        .blue  = (uint8_t)((color & 0xFFU) * level / 255U),
+    };
+    return result;
+}
+
+static codex_micro_rgb_t rainbow_color(uint8_t position, uint8_t brightness) {
+    uint32_t color;
+    if (position < 85U) {
+        uint8_t offset = position * 3U;
+        color = ((uint32_t)offset << 16) | ((uint32_t)(255U - offset) << 8);
+    } else if (position < 170U) {
+        uint8_t offset = (uint8_t)((position - 85U) * 3U);
+        color = ((uint32_t)(255U - offset) << 16) | offset;
+    } else {
+        uint8_t offset = (uint8_t)((position - 170U) * 3U);
+        color = ((uint32_t)offset << 8) | (255U - offset);
+    }
+    return scale_color(color, brightness, 255);
+}
+
+static codex_micro_rgb_t blend_color(codex_micro_rgb_t base, uint32_t overlay, uint8_t amount) {
+    uint8_t inverse = (uint8_t)(255U - amount);
+    codex_micro_rgb_t result = {
+        .red   = (uint8_t)(((uint16_t)base.red * inverse + ((overlay >> 16) & 0xFFU) * amount) / 255U),
+        .green = (uint8_t)(((uint16_t)base.green * inverse + ((overlay >> 8) & 0xFFU) * amount) / 255U),
+        .blue  = (uint8_t)(((uint16_t)base.blue * inverse + (overlay & 0xFFU) * amount) / 255U),
+    };
+    return result;
+}
+
+static codex_micro_rgb_t scale_rgb(codex_micro_rgb_t color, uint8_t amount) {
+    codex_micro_rgb_t result = {
+        .red   = (uint8_t)((uint16_t)color.red * amount / 255U),
+        .green = (uint8_t)((uint16_t)color.green * amount / 255U),
+        .blue  = (uint8_t)((uint16_t)color.blue * amount / 255U),
+    };
+    return result;
+}
+
+static codex_micro_rgb_t max_rgb(codex_micro_rgb_t first, codex_micro_rgb_t second) {
+    codex_micro_rgb_t result = {
+        .red   = first.red > second.red ? first.red : second.red,
+        .green = first.green > second.green ? first.green : second.green,
+        .blue  = first.blue > second.blue ? first.blue : second.blue,
+    };
+    return result;
+}
+
+static codex_micro_rgb_t render_effect(codex_micro_lighting_side_t side, uint8_t led, uint32_t now) {
+    codex_micro_rgb_t off = {0, 0, 0};
+    if (side.effect == CODEX_MICRO_EFFECT_OFF || side.brightness == 0) {
+        return off;
+    }
+
+    uint8_t position = led_animation_position[led];
+    uint8_t phase    = effect_phase(now, adjusted_speed(side.speed));
+    uint8_t level    = 255;
+    switch (side.effect) {
+        case CODEX_MICRO_EFFECT_SOLID:
+            break;
+        case CODEX_MICRO_EFFECT_SNAKE: {
+            uint16_t cycle    = RGB_MATRIX_LED_COUNT * 256U;
+            uint16_t head     = (uint16_t)((uint32_t)phase * cycle / 255U);
+            uint16_t led_at   = position * 256U;
+            uint16_t distance = (uint16_t)((head + cycle - led_at) % cycle);
+            uint16_t tail     = 6U * 256U;
+            if (distance >= tail) {
+                level = 0;
+            } else {
+                level = smoothstep8((uint8_t)(255U - (uint32_t)distance * 255U / tail));
+            }
+            break;
+        }
+        case CODEX_MICRO_EFFECT_RAINBOW:
+            return rainbow_color((uint8_t)(phase + (uint16_t)position * 256U / RGB_MATRIX_LED_COUNT), side.brightness);
+        case CODEX_MICRO_EFFECT_BREATH:
+            level = pulse8(phase);
+            break;
+        case CODEX_MICRO_EFFECT_GRADIENT: {
+            uint8_t gradient_position = side.magic & 1U ? (uint8_t)(RGB_MATRIX_LED_COUNT - 1U - position) : position;
+            uint8_t gradient = smoothstep8((uint8_t)((uint16_t)gradient_position * 255U / (RGB_MATRIX_LED_COUNT - 1U)));
+            level = (uint8_t)(72U + (uint16_t)gradient * 183U / 255U);
+            break;
+        }
+        case CODEX_MICRO_EFFECT_SHALLOW_BREATH:
+            level = (uint8_t)(128U + pulse8(phase) / 2U);
+            break;
+        default:
+            return off;
+    }
+    return scale_color(side.color, side.brightness, level);
+}
+
+static bool synced_background_lighting(codex_micro_lighting_side_t *result) {
+    for (uint8_t slot = 0; slot < CODEX_MICRO_TASK_KEY_COUNT; ++slot) {
+        const codex_micro_light_t *light = &thread_lights[slot];
+        if (!light->assigned || (!light->sync_keys && !light->sync_ambient)) {
+            continue;
+        }
+        result->color      = display_thread_color(light->color);
+        result->brightness = light->brightness;
+        result->speed      = light->speed;
+        result->magic      = 0;
+        result->effect     = light->effect;
+        return true;
+    }
+    return false;
+}
+
+static codex_micro_rgb_t render_background(uint8_t led, uint32_t now) {
+    codex_micro_lighting_side_t synced;
+    if (synced_background_lighting(&synced)) {
+        return render_effect(synced, led, now);
+    }
+
+    codex_micro_rgb_t keys = render_effect(keys_lighting, led, now);
+    bool perimeter = (codex_micro_settings_get()->flags & CODEX_MICRO_SETTING_PERIMETER) != 0;
+    bool inner = led == 5 || led == 6 || led == 9 || led == 10;
+    codex_micro_rgb_t ambient = perimeter && inner ? (codex_micro_rgb_t){0, 0, 0} : render_effect(ambient_lighting, led, now);
+    if (keys_lighting.effect == CODEX_MICRO_EFFECT_OFF) {
+        return ambient;
+    }
+    if (ambient_lighting.effect == CODEX_MICRO_EFFECT_OFF) {
+        return keys;
+    }
+    if (ambient_lighting.effect != CODEX_MICRO_EFFECT_SOLID) {
+        keys = scale_rgb(keys, 72);
+    }
+    return max_rgb(keys, ambient);
 }
 
 static uint32_t display_thread_color(uint32_t color) {
@@ -653,24 +1013,106 @@ static uint32_t display_thread_color(uint32_t color) {
     }
 }
 
+static uint32_t status_animation_time(uint32_t now) {
+    return (uint32_t)((uint64_t)now * codex_micro_settings_get()->speed_percent / 100U);
+}
+
+static uint8_t status_pulse_window(uint32_t phase, uint16_t start, uint16_t length) {
+    if (phase < start || phase >= (uint32_t)start + length) return 0;
+    return pulse8((uint8_t)((phase - start) * 255U / length));
+}
+
+static codex_micro_rgb_t render_agent_status(const codex_micro_light_t *light, codex_micro_slot_state_t state, uint8_t led, uint32_t now) {
+    codex_micro_lighting_side_t side = {
+        .color = display_thread_color(light->color),
+        .brightness = light->brightness,
+        .speed = light->speed,
+        .magic = 0,
+        .effect = light->effect,
+    };
+    if (light->color == 0xFFFFFFU) {
+        side.color = ((uint32_t)CODEX_MICRO_COOL_WHITE_RED << 16) | ((uint32_t)CODEX_MICRO_COOL_WHITE_GREEN << 8) | CODEX_MICRO_COOL_WHITE_BLUE;
+    }
+
+    if (state == CODEX_MICRO_SLOT_IDLE) side.color = CODEX_MICRO_IDLE_WARM_COLOR;
+
+    if (state == CODEX_MICRO_SLOT_WORKING) {
+        side.effect = CODEX_MICRO_EFFECT_BREATH;
+        side.speed = 150;
+    } else if (state == CODEX_MICRO_SLOT_COMPLETE) {
+        side.effect = CODEX_MICRO_EFFECT_SHALLOW_BREATH;
+        side.speed = 72;
+    } else if (state == CODEX_MICRO_SLOT_ATTENTION || state == CODEX_MICRO_SLOT_ERROR) {
+        uint32_t phase = status_animation_time(now) % 1800U;
+        uint8_t level = 48;
+        if (state == CODEX_MICRO_SLOT_ATTENTION) {
+            uint8_t first = status_pulse_window(phase, 0, 300);
+            uint8_t second = status_pulse_window(phase, 450, 300);
+            level = first > second ? first : second;
+        } else {
+            uint32_t beat = phase % 600U;
+            level = beat < 400U ? pulse8((uint8_t)(beat * 255U / 400U)) : 0;
+        }
+        if (level < 48) level = 48;
+        return scale_color(side.color, side.brightness, level);
+    }
+    return render_effect(side, led, now);
+}
+
 bool codex_micro_rgb_indicators(uint8_t led_min, uint8_t led_max) {
+    uint32_t now = timer_read32();
+    codex_micro_alerts_tick(now);
+    bool has_alert = codex_micro_alerts_active() != CODEX_MICRO_ALERT_NONE;
+    uint8_t alert_origin = 0xFF;
+    uint8_t alert_slot = codex_micro_alerts_active_slot();
+    if (alert_slot < CODEX_MICRO_TASK_KEY_COUNT) {
+        uint8_t origin_led = kb16_config_find_native(agent_native_controls[alert_slot]);
+        if (origin_led < RGB_MATRIX_LED_COUNT) alert_origin = led_animation_position[origin_led];
+    }
     if (get_highest_layer(layer_state) != 0) {
+        if (has_alert) {
+            for (uint8_t led = led_min; led < led_max && led < RGB_MATRIX_LED_COUNT; ++led) {
+                codex_micro_alert_sample_t sample;
+                if (codex_micro_alerts_sample(led_animation_position[led], alert_origin, RGB_MATRIX_LED_COUNT, now, &sample)) {
+                    codex_micro_rgb_t flash = scale_color(sample.color, 255, sample.amount);
+                    flash = scale_rgb(flash, brightness_cap());
+                    RGB_MATRIX_INDICATOR_SET_COLOR(led, flash.red, flash.green, flash.blue);
+                }
+            }
+        }
         return true;
     }
 
-    if (lighting_off) {
+    if (!lighting_config_seen && lighting_off && !has_alert && codex_micro_settings_get()->background_percent == 0) {
         for (uint8_t led = led_min; led < led_max && led < RGB_MATRIX_LED_COUNT; ++led) {
             RGB_MATRIX_INDICATOR_SET_COLOR(led, 0, 0, 0);
         }
         return true;
     }
 
-    uint8_t background_red   = (uint8_t)((uint16_t)CODEX_MICRO_COOL_WHITE_RED * global_brightness / 255U);
-    uint8_t background_green = (uint8_t)((uint16_t)CODEX_MICRO_COOL_WHITE_GREEN * global_brightness / 255U);
-    uint8_t background_blue  = global_brightness;
     for (uint8_t led = 0; led < RGB_MATRIX_LED_COUNT; ++led) {
         if (led >= led_min && led < led_max) {
-            RGB_MATRIX_INDICATOR_SET_COLOR(led, background_red, background_green, background_blue);
+            codex_micro_rgb_t color;
+            if (lighting_config_seen) {
+                color = render_background(led, now);
+            } else {
+                color.red   = (uint8_t)((uint16_t)CODEX_MICRO_COOL_WHITE_RED * global_brightness / 255U);
+                color.green = (uint8_t)((uint16_t)CODEX_MICRO_COOL_WHITE_GREEN * global_brightness / 255U);
+                color.blue  = global_brightness;
+            }
+            if (status_demo_active) color = (codex_micro_rgb_t){0, 0, 0};
+            else if (preview_lighting_active) color = render_effect(preview_lighting, led, now);
+            if (!status_demo_active && color.red == 0 && color.green == 0 && color.blue == 0 && codex_micro_settings_get()->background_percent > 0) {
+                color = scale_color(((uint32_t)CODEX_MICRO_COOL_WHITE_RED << 16) | ((uint32_t)CODEX_MICRO_COOL_WHITE_GREEN << 8) |
+                                        CODEX_MICRO_COOL_WHITE_BLUE,
+                                    255, (uint8_t)((uint16_t)255U * codex_micro_settings_get()->background_percent / 100U));
+            }
+            codex_micro_alert_sample_t sample;
+            if (codex_micro_alerts_sample(led_animation_position[led], alert_origin, RGB_MATRIX_LED_COUNT, now, &sample)) {
+                color = blend_color(color, sample.color, sample.amount);
+            }
+            color = scale_rgb(color, brightness_cap());
+            RGB_MATRIX_INDICATOR_SET_COLOR(led, color.red, color.green, color.blue);
         }
     }
 
@@ -680,29 +1122,83 @@ bool codex_micro_rgb_indicators(uint8_t led_min, uint8_t led_max) {
             continue;
         }
 
+        codex_micro_rgb_t color = {0, 0, 0};
         const codex_micro_light_t *light = &thread_lights[slot];
-        uint8_t red = 0, green = 0, blue = 0;
-        if (host_seen && light->assigned && light->effect != CODEX_MICRO_EFFECT_OFF) {
-            uint16_t brightness = light->brightness;
-            if (light->effect == CODEX_MICRO_EFFECT_BREATH) {
-                brightness = brightness * breath_multiplier() / 255U;
-            }
-            uint32_t display_color = display_thread_color(light->color);
-            uint8_t  source_red    = (uint8_t)((display_color >> 16) & 0xFFU);
-            uint8_t  source_green  = (uint8_t)((display_color >> 8) & 0xFFU);
-            uint8_t  source_blue   = (uint8_t)(display_color & 0xFFU);
-            if (light->color == 0xFFFFFFU) {
-                source_red   = CODEX_MICRO_COOL_WHITE_RED;
-                source_green = CODEX_MICRO_COOL_WHITE_GREEN;
-                source_blue  = CODEX_MICRO_COOL_WHITE_BLUE;
-            }
-            red   = (uint8_t)((uint16_t)source_red * brightness / 255U);
-            green = (uint8_t)((uint16_t)source_green * brightness / 255U);
-            blue  = (uint8_t)((uint16_t)source_blue * brightness / 255U);
+        if (status_demo_active) {
+            static const codex_micro_slot_state_t demo_states[] = {
+                CODEX_MICRO_SLOT_IDLE, CODEX_MICRO_SLOT_WORKING, CODEX_MICRO_SLOT_COMPLETE,
+                CODEX_MICRO_SLOT_ATTENTION, CODEX_MICRO_SLOT_ERROR, CODEX_MICRO_SLOT_OFF,
+            };
+            static const uint32_t demo_colors[] = {
+                0xFFFFFFU, CODEX_MICRO_STATUS_WORKING_COLOR, CODEX_MICRO_STATUS_UNREAD_COLOR,
+                CODEX_MICRO_STATUS_ATTENTION_COLOR, CODEX_MICRO_STATUS_ERROR_COLOR, 0,
+            };
+            codex_micro_light_t demo = {.color = demo_colors[slot], .brightness = 255, .speed = 100, .effect = CODEX_MICRO_EFFECT_SOLID, .assigned = slot != 5};
+            if (demo.assigned) color = render_agent_status(&demo, demo_states[slot], led, now);
+        } else if (host_seen && light->assigned && light->effect != CODEX_MICRO_EFFECT_OFF) {
+            color = render_agent_status(light, slot_states[slot], led, now);
         }
-        RGB_MATRIX_INDICATOR_SET_COLOR(led, red, green, blue);
+        if (preview_lighting_active) color = render_effect(preview_lighting, led, now);
+        codex_micro_alert_sample_t sample;
+        if (codex_micro_alerts_sample(led_animation_position[led], alert_origin, RGB_MATRIX_LED_COUNT, now, &sample)) {
+            color = blend_color(color, sample.color, sample.amount);
+        }
+        color = scale_rgb(color, brightness_cap());
+        RGB_MATRIX_INDICATOR_SET_COLOR(led, color.red, color.green, color.blue);
     }
     return true;
+}
+
+bool codex_micro_host_connected(void) { return host_seen; }
+codex_micro_slot_state_t codex_micro_slot_state(uint8_t slot) { return slot < CODEX_MICRO_HOST_SLOT_COUNT ? slot_states[slot] : CODEX_MICRO_SLOT_OFF; }
+char codex_micro_slot_mark(uint8_t slot) {
+    static const char marks[] = {'-', 'I', 'W', 'C', '!', 'E', '?'};
+    return marks[codex_micro_slot_state(slot)];
+}
+int8_t codex_micro_selected_slot(void) {
+    for (uint8_t slot = 0; slot < CODEX_MICRO_HOST_SLOT_COUNT; ++slot) {
+        if (thread_lights[slot].assigned && thread_lights[slot].effect == CODEX_MICRO_EFFECT_BREATH) return (int8_t)slot;
+    }
+    return -1;
+}
+const char *codex_micro_alert_label(void) {
+    static const char *const labels[] = {"READY", "REMINDER", "RECONNECTED", "COMPLETE", "NEEDS INPUT", "ERROR"};
+    return labels[codex_micro_alerts_active()];
+}
+uint8_t codex_micro_alert_slot(void) { return codex_micro_alerts_active_slot(); }
+void codex_micro_preview_alert(uint8_t alert) {
+    preview_lighting_active = false;
+    status_demo_active = false;
+    int8_t selected = codex_micro_selected_slot();
+    uint8_t slot = selected >= 0 ? (uint8_t)selected : 0;
+    if (alert > CODEX_MICRO_ALERT_NONE && alert < CODEX_MICRO_ALERT_COUNT) codex_micro_alerts_queue((codex_micro_alert_t)alert, slot, timer_read32(), true);
+}
+void codex_micro_preview_effect(uint8_t effect) {
+    if (effect == 0 || effect > CODEX_MICRO_EFFECT_SHALLOW_BREATH) {
+        preview_lighting_active = false;
+        status_demo_active = false;
+        return;
+    }
+    codex_micro_alerts_cancel_preview(timer_read32());
+    preview_lighting_active = true;
+    status_demo_active = false;
+    preview_lighting = (codex_micro_lighting_side_t){
+        .color = effect == CODEX_MICRO_EFFECT_SNAKE || effect == CODEX_MICRO_EFFECT_GRADIENT ? CODEX_MICRO_STATUS_WORKING_COLOR : 0xD7D3FFU,
+        .brightness = 255,
+        .speed = 112,
+        .magic = 0,
+        .effect = (codex_micro_effect_t)effect,
+    };
+}
+void codex_micro_preview_status_demo(void) {
+    codex_micro_alerts_cancel_preview(timer_read32());
+    preview_lighting_active = false;
+    status_demo_active = true;
+}
+void codex_micro_cancel_previews(void) {
+    preview_lighting_active = false;
+    status_demo_active = false;
+    codex_micro_alerts_cancel_preview(timer_read32());
 }
 
 void raw_hid_receive(uint8_t *data, uint8_t length) {

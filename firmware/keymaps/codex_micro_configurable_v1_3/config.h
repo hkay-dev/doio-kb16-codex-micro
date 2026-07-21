@@ -22,8 +22,9 @@
 #define RAW_REPORT_COUNT 63
 #define RAW_EPSIZE 64
 
-// Two validated v1.3 configuration slots live in QMK's wear-levelled EEPROM.
-#define EECONFIG_USER_DATA_SIZE 712
+// Two validated v1.3 configuration slots keep their original offsets. A
+// separate 16-byte lighting preference record follows them at offset 712.
+#define EECONFIG_USER_DATA_SIZE 728
 #define EECONFIG_USER_DATA_VERSION 0x0103
 
 // PA10 is TIM1_CH3. Use its channel DMA request on DMA1 stream 6 so the

@@ -16,8 +16,8 @@ namespace Doio.Kb16.Mapper;
 
 public partial class MainWindow : Window
 {
-    private static readonly string[] EncoderNames = ["左旋钮", "右旋钮", "中旋钮"];
-    private static readonly string[] EncoderActionNames = ["逆时针", "顺时针", "按压"];
+    private static readonly string[] EncoderNames = ["Left encoder", "Right encoder", "Middle encoder"];
+    private static readonly string[] EncoderActionNames = ["Counterclockwise", "Clockwise", "Press"];
     private readonly List<Button> _keyButtons = [];
     private readonly List<Button> _encoderButtons = [];
     private readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
@@ -87,7 +87,7 @@ public partial class MainWindow : Window
     internal CornerRadius EditorFooterCornerRadiusForTesting => EditorFooterSurface.CornerRadius;
 
     internal void SetLightingStateForTesting(LightingState state) => SetLightingIndicator(state);
-    internal void ShowLightingErrorForTesting() => ShowLightingError("设备正忙", "请松开按键后重试。");
+    internal void ShowLightingErrorForTesting() => ShowLightingError("Device Busy", "Release the key and try again.");
     internal void OpenLightingPopupForTesting() => LightingPopup.IsOpen = true;
 
     internal void PrepareLightingPanelForTesting()
@@ -106,13 +106,13 @@ public partial class MainWindow : Window
         SetLightingIndicator(new LightingState(true, 1, 170, 140, 120));
         StatusText.Text = "Work Louder Codex Micro";
         ConnectionLed.Fill = (Brush)FindResource("SuccessBrush");
-        ReadButton.Content = "重新读取";
+        ReadButton.Content = "Read Again";
         LayerTabs.SelectedIndex = 3;
         _working!.Layers[2].Keys[0] = new ActionDescriptor { Kind = ActionKind.Keyboard, Code = 0x73 };
         SelectControl(new ControlSelection(ControlType.Key, 0, 0));
         UpdateDraftBar();
         if (kind == VisualPreviewKind.Error)
-            ShowInlineError("设备配置已变化", "草稿已保留，请重新读取后检查差异。");
+            ShowInlineError("Device Configuration Changed", "Your draft is still here. Read the device again and check the differences.");
     }
 
     private static DeviceConfiguration CreateVisualPreviewConfiguration()
@@ -227,7 +227,7 @@ public partial class MainWindow : Window
             LoadSnapshot(snapshot);
             StatusText.Text = _client.DeviceName;
             ConnectionLed.Fill = (Brush)FindResource("SuccessBrush");
-            ReadButton.Content = "重新读取";
+            ReadButton.Content = "Read Again";
             readSucceeded = true;
         });
         if (readSucceeded) await RefreshLightingIndicatorAsync();
@@ -244,9 +244,9 @@ public partial class MainWindow : Window
         }
         catch (DeviceProtocolException exception) when (exception.Opcode == 7 && exception.StatusCode == 2)
         {
-            ResetLightingIndicator("普通层灯光 · 当前固件不支持");
+            ResetLightingIndicator("Ordinary-layer lighting · Unsupported by current firmware");
             LightingButton.IsEnabled = false;
-            SetLightingToolTip("当前键盘固件不支持灯控；需要配套灯控固件");
+            SetLightingToolTip("The current keyboard firmware doesn't support lighting control. Install the matching lighting firmware.");
         }
         catch (Exception exception)
         {
@@ -256,7 +256,7 @@ public partial class MainWindow : Window
 
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {
-        if (_working is null || _loaded is null) { MessageBox.Show("请先读取设备配置。", "尚未连接"); return; }
+        if (_working is null || _loaded is null) { MessageBox.Show("Read the device configuration first.", "Not Connected"); return; }
         var difference = ConfigurationDiff.Compare(_loaded, _working);
         if (!difference.HasChanges) return;
         var confirmation = new ApplyConfirmationWindow(difference) { Owner = this };
@@ -268,7 +268,7 @@ public partial class MainWindow : Window
             if (!ConfigurationApplyGuard.Matches(_generation, _crc, _loaded, current)) throw new DeviceStateChangedException();
             var snapshot = await _client!.WriteConfigurationAsync(_working);
             LoadSnapshot(snapshot);
-            StatusText.Text = "配置已写入并通过回读校验";
+            StatusText.Text = "Configuration written and verified by readback";
         });
     }
 
@@ -281,35 +281,35 @@ public partial class MainWindow : Window
         RefreshControls();
         SetEditorEnabled(false);
         UpdateDraftBar();
-        StatusText.Text = _client?.DeviceName ?? "已撤销尚未应用的修改";
+        StatusText.Text = _client?.DeviceName ?? "Pending changes reverted";
     }
 
     private async void Reset_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show("将恢复与 v1.2 完全一致的默认键位。确定继续？", "恢复默认", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
+        if (MessageBox.Show("This restores the exact v1.2 default keymap. Continue?", "Restore Defaults", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
         await RunDeviceActionAsync(DeviceOperation.Reset, async () =>
         {
             await EnsureConnectedAsync();
             LoadSnapshot(await _client!.ResetDefaultsAsync());
-            StatusText.Text = "设备已恢复 v1.2 默认配置";
+            StatusText.Text = "Device restored to the v1.2 default configuration";
         });
     }
 
     private void Export_Click(object sender, RoutedEventArgs e)
     {
-        if (_working is null) { MessageBox.Show("没有可导出的配置。"); return; }
-        var dialog = new SaveFileDialog { Filter = "KB16 配置 (*.json)|*.json", FileName = "doio-kb16-config-v1.json" };
+        if (_working is null) { MessageBox.Show("There's no configuration to export."); return; }
+        var dialog = new SaveFileDialog { Filter = "KB16 configuration (*.json)|*.json", FileName = "doio-kb16-config-v1.json" };
         if (dialog.ShowDialog(this) == true) File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_working, _jsonOptions));
     }
 
     private void Import_Click(object sender, RoutedEventArgs e)
     {
-        if (_loaded is null) { MessageBox.Show("请先读取设备配置，再把 JSON 作为当前设备的本地草稿导入。", "请先读取设备"); return; }
-        var dialog = new OpenFileDialog { Filter = "KB16 配置 (*.json)|*.json" };
+        if (_loaded is null) { MessageBox.Show("Read the device first, then import the JSON as a local draft for this device.", "Read the Device First"); return; }
+        var dialog = new OpenFileDialog { Filter = "KB16 configuration (*.json)|*.json" };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
-            var imported = JsonSerializer.Deserialize<DeviceConfiguration>(File.ReadAllText(dialog.FileName), _jsonOptions) ?? throw new InvalidDataException("JSON 内容为空。");
+            var imported = JsonSerializer.Deserialize<DeviceConfiguration>(File.ReadAllText(dialog.FileName), _jsonOptions) ?? throw new InvalidDataException("The JSON file is empty.");
             imported.Validate();
             _working = imported;
             _selection = null;
@@ -317,9 +317,9 @@ public partial class MainWindow : Window
             RefreshControls();
             SetEditorEnabled(false);
             UpdateDraftBar();
-            StatusText.Text = "已导入本地草稿；尚未写入设备";
+            StatusText.Text = "Local draft imported. Nothing has been written to the device.";
         }
-        catch (Exception exception) { MessageBox.Show(exception.Message, "导入失败", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception exception) { MessageBox.Show(exception.Message, "Import Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void More_Click(object sender, RoutedEventArgs e)
@@ -422,7 +422,7 @@ public partial class MainWindow : Window
             _lightingOriginal = null;
             SetLightingIndicator(saved);
             HideLightingError();
-            StatusText.Text = "普通层灯光已保存并通过回读校验";
+            StatusText.Text = "Ordinary-layer lighting saved and verified by readback";
             LightingPopup.IsOpen = false;
         }
         catch (Exception exception)
@@ -452,7 +452,7 @@ public partial class MainWindow : Window
             if (restored is not null)
             {
                 SetLightingIndicator(restored);
-                StatusText.Text = _client?.DeviceName ?? "灯光预览已恢复";
+                StatusText.Text = _client?.DeviceName ?? "Lighting preview restored";
             }
             HideLightingError();
         }
@@ -491,18 +491,18 @@ public partial class MainWindow : Window
             : Color.FromRgb(48, 48, 44);
         LightingIndicator.Fill = new SolidColorBrush(color);
         SetLightingToolTip(!state.Enabled || state.Value == 0
-            ? "普通层灯光 · 已关闭"
+            ? "Ordinary-layer lighting · Off"
             : BuildLightingToolTip(LightingValueConverter.HueByteToDegrees(state.Hue), LightingValueConverter.ByteToPercent(state.Saturation), LightingValueConverter.BrightnessByteToPercent(state.Value)));
     }
 
-    private void ResetLightingIndicator(string tooltip = "普通层灯光 · 设备未连接")
+    private void ResetLightingIndicator(string tooltip = "Ordinary-layer lighting · Device not connected")
     {
         LightingIndicator.Fill = new SolidColorBrush(Color.FromRgb(142, 141, 134));
         SetLightingToolTip(tooltip);
     }
 
     private static string BuildLightingToolTip(double hue, double saturation, double value) =>
-        $"普通层灯光 · H {Math.Round(hue):0}° · S {Math.Round(saturation):0}% · V {Math.Round(value):0}%";
+        $"Ordinary-layer lighting · H {Math.Round(hue):0}° · S {Math.Round(saturation):0}% · V {Math.Round(value):0}%";
 
     private void SetLightingToolTip(string tooltip)
     {
@@ -539,8 +539,8 @@ public partial class MainWindow : Window
         _suppressLightingPopupRestore = false;
         await DisconnectClientAsync();
         ShowInlineError(presentation.Title, context == LightingFailureContext.Restore
-            ? "未能恢复打开面板前的灯光状态，请重新读取设备。所有预览均未写入 EEPROM。"
-            : "灯光连接已中断，请重新读取设备后重试。");
+            ? "The lighting state from before the panel opened couldn't be restored. Read the device again. No preview was written to EEPROM."
+            : "The lighting connection was interrupted. Read the device again and retry.");
     }
 
     private CustomPopupPlacement[] LightingPopup_Placement(Size popupSize, Size targetSize, Point offset)
@@ -582,7 +582,7 @@ public partial class MainWindow : Window
     {
         if (!IsLoaded) return;
         _selection = null;
-        LayerNote.Text = $"{LayerName(LayerTabs.SelectedIndex)} 层  16 个按键  3 个旋钮";
+        LayerNote.Text = $"{LayerName(LayerTabs.SelectedIndex)} layer  ·  16 keys  ·  3 encoders";
         RefreshControls();
         SetEditorEnabled(false);
     }
@@ -615,10 +615,10 @@ public partial class MainWindow : Window
                 FilterPanel.Opacity = 0.42;
                 ModifierPanel.Visibility = Visibility.Collapsed;
                 ActionBox.ItemsSource = Enum.GetValues<NativeControl>()
-                    .Select(value => new ActionOption("Codex 原生", NativeName(value), new ActionDescriptor { Kind = ActionKind.None, Code = (ushort)value }))
+                    .Select(value => new ActionOption("Native Codex", NativeName(value), new ActionDescriptor { Kind = ActionKind.None, Code = (ushort)value }))
                     .ToArray();
                 ActionBox.SelectedIndex = (int)_working.NativeKeys[selection.Index];
-                EditorHint.Text = "选择另一原生控件后会立即交换位置，16 个原生事件始终各保留一次。";
+                EditorHint.Text = "Selecting another native control swaps their positions. All 16 native events always appear exactly once.";
             }
             else
             {
@@ -629,8 +629,8 @@ public partial class MainWindow : Window
                 ResetActionEditor(action);
                 SetModifierChecks(action);
                 EditorHint.Text = selection.Type == ControlType.Encoder && selection.ActionIndex != 2
-                    ? "旋转动作按一次点击执行；选择后立即进入本地草稿。"
-                    : "组合键修饰符仅对键盘动作生效；设备写入仍需点击底部按钮。";
+                    ? "Each encoder step runs one click. Your selection goes into the local draft right away."
+                    : "Chord modifiers only affect keyboard actions. Use the button below to write the device.";
             }
         }
         finally { _updatingEditor = false; }
@@ -775,10 +775,10 @@ public partial class MainWindow : Window
                 ? _working.CodexEncoders[(selection.Index - 1) * 3 + selection.ActionIndex]
                 : _working.Layers[layer - 1].Encoders[selection.Index * 3 + selection.ActionIndex]);
             button.Content = selection.ActionIndex == 2 ? null : EncoderButtonContent(name);
-            button.ToolTip = locked ? "Codex 层左旋钮保持原生映射" : name;
+            button.ToolTip = locked ? "The Codex layer's left encoder keeps its native mapping" : name;
             ApplySelectionSurface(button, _selection == selection, selection.ActionIndex == 2);
         }
-        LayerNote.Text = $"{LayerName(layer)} 层  16 个按键  3 个旋钮";
+        LayerNote.Text = $"{LayerName(layer)} layer  ·  16 keys  ·  3 encoders";
     }
 
     private object KeycapContent(string name, int index, bool changed)
@@ -786,7 +786,7 @@ public partial class MainWindow : Window
         var grid = new Grid();
         var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         stack.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.SemiBold, FontSize = 12 });
-        stack.Children.Add(new TextBlock { Text = $"第 {index / 4 + 1} 排 / 第 {index % 4 + 1} 列", Foreground = (Brush)FindResource("MutedBrush"), FontSize = 9, Margin = new Thickness(0, 3, 0, 0) });
+        stack.Children.Add(new TextBlock { Text = $"Row {index / 4 + 1} / Column {index % 4 + 1}", Foreground = (Brush)FindResource("MutedBrush"), FontSize = 9, Margin = new Thickness(0, 3, 0, 0) });
         grid.Children.Add(stack);
         if (changed)
         {
@@ -841,25 +841,25 @@ public partial class MainWindow : Window
         var changed = _loaded is not null && (_selection.Type == ControlType.Key && layer == 0
             ? _loaded.NativeKeys[_selection.Index] != _working.NativeKeys[_selection.Index]
             : !DraftEditing.IsSame(GetLoadedAction(_selection, layer), GetSelectedAction()));
-        CurrentDraftMark.Text = changed ? "未应用" : string.Empty;
+        CurrentDraftMark.Text = changed ? "NOT APPLIED" : string.Empty;
     }
 
     private void UpdateDraftBar()
     {
         if (_loaded is null || _working is null)
         {
-            DraftTitle.Text = "等待读取设备";
-            DraftSubtitle.Text = "连接后会在这里显示未应用修改和设备快照";
+            DraftTitle.Text = "Waiting for Device";
+            DraftSubtitle.Text = "Pending changes and the device snapshot will appear here";
             SnapshotText.Text = string.Empty;
             RevertButton.IsEnabled = ApplyButton.IsEnabled = false;
             return;
         }
         var difference = ConfigurationDiff.Compare(_loaded, _working);
         SnapshotText.Text = $"DEVICE SNAPSHOT\nGEN {_generation:D2} / {_crc:X8}";
-        DraftTitle.Text = difference.HasChanges ? $"{difference.ChangedControlCount} 处未应用修改" : "当前没有未应用修改";
+        DraftTitle.Text = difference.HasChanges ? $"{difference.ChangedControlCount} pending changes" : "No pending changes";
         DraftSubtitle.Text = difference.HasChanges
             ? $"{difference.Changes[0].Location}：{difference.Changes[0].OldValue} → {difference.Changes[0].NewValue}"
-            : "所有编辑都只保存在本地草稿，应用前不会写入设备";
+            : "Edits stay in the local draft until you apply them";
         RevertButton.IsEnabled = ApplyButton.IsEnabled = difference.HasChanges;
     }
 
@@ -874,7 +874,7 @@ public partial class MainWindow : Window
         try
         {
             var hello = await client.HelloAsync();
-            if (hello.ConfigLength != DeviceConfiguration.PayloadSize) throw new InvalidDataException("固件配置长度与编辑器不匹配。");
+            if (hello.ConfigLength != DeviceConfiguration.PayloadSize) throw new InvalidDataException("The firmware configuration length doesn't match the Mapper.");
             _client = client;
             _lightingSession = new LightingSessionCoordinator(new ConfigLightingTransport(client));
         }
@@ -922,7 +922,7 @@ public partial class MainWindow : Window
         var presentation = DeviceErrorPresenter.Create(exception, operation);
         StatusText.Text = presentation.Title;
         if (exception is DeviceStateChangedException)
-            ShowInlineError(presentation.Title, "草稿已保留，请重新读取后检查差异。");
+            ShowInlineError(presentation.Title, "Your draft is still here. Read the device again and check the differences.");
         else
             MessageBox.Show(presentation.Message, presentation.Title, MessageBoxButton.OK, MessageBoxImage.Error);
         if (presentation.Disconnect && _client is not null)
@@ -944,7 +944,7 @@ public partial class MainWindow : Window
             LightingButton.IsEnabled = false;
             ResetLightingIndicator();
             ConnectionLed.Fill = new SolidColorBrush(Color.FromRgb(170, 169, 161));
-            ReadButton.Content = "连接 / 读取";
+            ReadButton.Content = "Connect / Read";
         }
     }
 
@@ -963,14 +963,14 @@ public partial class MainWindow : Window
         FilterPanel.IsEnabled = enabled;
         ModifierPanel.IsEnabled = enabled;
         if (enabled) return;
-        SelectedControlText.Text = "请选择按键或旋钮动作";
+        SelectedControlText.Text = "Select a key or encoder action";
         CurrentActionText.Text = "—";
         CurrentDraftMark.Text = string.Empty;
         ActionBox.ItemsSource = null;
         SearchBox.Text = string.Empty;
         CategoryAll.IsChecked = true;
         ModifierPanel.Visibility = Visibility.Visible;
-        EditorHint.Text = "选择一个物理控件后即可编辑本地草稿。";
+        EditorHint.Text = "Select a physical control to edit the local draft.";
     }
 
     private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -1031,17 +1031,17 @@ public partial class MainWindow : Window
     }
 
     private static string SelectionLocation(ControlSelection selection, int layer) => selection.Type == ControlType.Key
-        ? $"{LayerName(layer)}层 / 第 {selection.Index / 4 + 1} 排 / 第 {selection.Index % 4 + 1} 列"
-        : $"{LayerName(layer)}层 / {EncoderNames[selection.Index]} / {EncoderActionNames[selection.ActionIndex]}";
+        ? $"{LayerName(layer)} layer / Row {selection.Index / 4 + 1} / Column {selection.Index % 4 + 1}"
+        : $"{LayerName(layer)} layer / {EncoderNames[selection.Index]} / {EncoderActionNames[selection.ActionIndex]}";
 
-    private static string LayerName(int layer) => new[] { "CODEX", "数字", "导航", "系统" }[layer];
-    private static string NativeEncoderName(int action) => action switch { 0 => "原生逆时针", 1 => "原生顺时针", _ => "原生按压" };
+    private static string LayerName(int layer) => new[] { "CODEX", "NUMBER", "NAVIGATION", "SYSTEM" }[layer];
+    private static string NativeEncoderName(int action) => action switch { 0 => "Native counterclockwise", 1 => "Native clockwise", _ => "Native press" };
     private static string NativeName(NativeControl value) => value switch
     {
-        NativeControl.JoystickUp => "摇杆上",
-        NativeControl.JoystickRight => "摇杆右",
-        NativeControl.JoystickDown => "摇杆下",
-        NativeControl.JoystickLeft => "摇杆左",
+        NativeControl.JoystickUp => "Joystick up",
+        NativeControl.JoystickRight => "Joystick right",
+        NativeControl.JoystickDown => "Joystick down",
+        NativeControl.JoystickLeft => "Joystick left",
         NativeControl.MicACT10 => "Mic ACT10",
         _ => value.ToString(),
     };

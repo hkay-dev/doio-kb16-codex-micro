@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "codex_micro_protocol.h"
+#include "codex_micro_settings.h"
 #include "kb16_config.h"
 #include "oled_icons.h"
 
@@ -349,6 +350,7 @@ int main(void) {
     kb16_config_host_clear_storage();
     kb16_config_init();
     test_config_transport();
+    codex_micro_settings_init();
     codex_micro_init();
     layer_state = 1;
     assert(matrix_val == 120);
@@ -365,9 +367,12 @@ int main(void) {
     expect_output_contains("0.1.0-qmk");
     assert(strcmp(popup_line1, "CODEX MICRO") == 0);
     assert(strcmp(popup_line2, "CONNECTED") == 0);
+    fake_timer = 1001;
+    codex_micro_task();
+    fake_timer = 0;
 
     clear_reports();
-    feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"},{\"id\":1,\"c\":255,\"b\":0.5,\"e\":\"breath\"},{\"id\":2,\"c\":16760576,\"b\":0.5,\"e\":\"solid\"},{\"id\":3,\"c\":65280,\"b\":0.5,\"e\":\"solid\"},{\"id\":4,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"},{\"id\":5,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"}],\"id\":42}");
+    feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"},{\"id\":1,\"c\":255,\"b\":0.5,\"e\":\"breath\"},{\"id\":2,\"c\":16739584,\"b\":0.5,\"e\":\"solid\"},{\"id\":3,\"c\":16711731,\"b\":0.5,\"e\":\"solid\"},{\"id\":4,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"},{\"id\":5,\"c\":16777215,\"b\":0.5,\"e\":\"solid\"}],\"id\":42}");
     expect_output_contains("\"id\":42");
     expect_output_contains("\"ok\":true");
 
@@ -375,14 +380,14 @@ int main(void) {
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
     assert(matrix_val == 120);
-    assert(colors[0][0] == 107 && colors[0][1] == 105 && colors[0][2] == 128);
-    assert(colors[1][0] == 0 && colors[1][1] == 0 && colors[1][2] == 128);
+    assert(colors[0][0] == 128 && colors[0][1] == 104 && colors[0][2] == 77);
+    assert(colors[1][0] == 0 && colors[1][1] == 0 && colors[1][2] > 0 && colors[1][2] < 128);
     assert(colors[2][0] == 107 && colors[2][1] == 105 && colors[2][2] == 128);
-    assert(colors[4][0] == 128 && colors[4][1] == 95 && colors[4][2] == 0);
-    assert(colors[5][0] == 0 && colors[5][1] == 128 && colors[5][2] == 0);
+    assert(colors[4][0] > colors[4][1] && colors[4][1] > 0 && colors[4][2] == 0);
+    assert(colors[5][0] > colors[5][2] && colors[5][2] > colors[5][1]);
     assert(colors[8][0] == colors[0][0] && colors[8][1] == colors[0][1] && colors[8][2] == colors[0][2]);
     assert(colors[9][0] == colors[0][0] && colors[9][1] == colors[0][1] && colors[9][2] == colors[0][2]);
-    assert(colors[15][0] == colors[0][0] && colors[15][1] == colors[0][1] && colors[15][2] == colors[0][2]);
+    assert(colors[15][0] == colors[2][0] && colors[15][1] == colors[2][1] && colors[15][2] == colors[2][2]);
 
     kb16_config_payload_t moved_lights = *kb16_config_get();
     uint8_t moved_control = moved_lights.native_keys[1];
@@ -391,7 +396,7 @@ int main(void) {
     assert(kb16_config_commit(&moved_lights));
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
-    assert(colors[15][0] == 0 && colors[15][1] == 0 && colors[15][2] == 128);
+    assert(colors[15][0] == 0 && colors[15][1] == 0 && colors[15][2] > 0 && colors[15][2] < 128);
     assert(colors[1][0] == 107 && colors[1][1] == 105 && colors[1][2] == 128);
     kb16_config_reset_defaults();
 
@@ -400,20 +405,40 @@ int main(void) {
     expect_output_contains("\"id\":43");
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
-    assert(colors[0][0] == 31 && colors[0][1] == 171 && colors[0][2] == 33);
-    assert(colors[1][0] == 26 && colors[1][1] == 72 && colors[1][2] == 171);
-    assert(colors[4][0] == 199 && colors[4][1] == 103 && colors[4][2] == 0);
-    assert(colors[5][0] == 199 && colors[5][1] == 20 && colors[5][2] == 77);
+    assert(colors[0][1] > colors[0][0] && colors[0][1] > colors[0][2]);
+    assert(colors[1][2] > colors[1][1] && colors[1][1] > colors[1][0]);
+    assert(colors[4][0] > colors[4][1] && colors[4][1] > 0 && colors[4][2] == 0);
+    assert(colors[5][0] > colors[5][2] && colors[5][2] > colors[5][1]);
     assert(colors[8][0] == 0x12 && colors[8][1] == 0x34 && colors[8][2] == 0x56);
-    assert(colors[9][0] == 215 && colors[9][1] == 211 && colors[9][2] == 255);
+    assert(colors[9][0] == 255 && colors[9][1] == 208 && colors[9][2] == 154);
+
+    // A new unread task produces two smooth, whole-matrix green pulses and is
+    // visible even when a local utility layer is active.
+    fake_timer = 1175;
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[0][1] > 245 && colors[0][2] > 65);
+    assert(colors[15][1] > colors[15][0]);
+    assert(colors[0][1] > colors[15][1]);
+    layer_state = 1UL << 2;
+    memset(colors, 0xAA, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[0][0] == 0 && colors[0][1] > 245 && colors[0][2] > 65);
+    assert(colors[15][0] == 0 && colors[15][1] > 0);
+    assert(colors[0][1] > colors[15][1]);
+    fake_timer = 2701;
+    memset(colors, 0xAA, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[0][0] == 0xAA && colors[0][1] == 0xAA && colors[0][2] == 0xAA);
+    layer_state = 1;
 
     clear_reports();
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":1,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":2,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":3,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":4,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":5,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"}],\"id\":45}");
     assert(matrix_val == 120);
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
-    assert(colors[0][0] == 172 && colors[0][1] == 168 && colors[0][2] == 204);
-    assert(colors[15][0] == colors[0][0] && colors[15][1] == colors[0][1] && colors[15][2] == colors[0][2]);
+    assert(colors[0][0] == 204 && colors[0][1] == 166 && colors[0][2] == 123);
+    assert(colors[15][0] == 172 && colors[15][1] == 168 && colors[15][2] == 204);
 
     clear_reports();
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":0,\"b\":0,\"e\":\"off\"}],\"id\":46}");
@@ -449,7 +474,7 @@ int main(void) {
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
     assert(colors[0][0] == 0 && colors[0][1] == 0 && colors[0][2] == 0);
     assert(colors[4][0] == 0 && colors[4][1] == 0 && colors[4][2] == 0);
-    assert(colors[9][0] == 43 && colors[9][1] == 42 && colors[9][2] == 51);
+    assert(colors[9][0] == 51 && colors[9][1] == 41 && colors[9][2] == 30);
     assert(colors[2][0] == 43 && colors[2][1] == 42 && colors[2][2] == 51);
     assert(colors[15][0] == 43 && colors[15][1] == 42 && colors[15][2] == 51);
 
@@ -457,13 +482,73 @@ int main(void) {
     feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":0,\"b\":0,\"e\":\"off\"},\"ambient\":{\"c\":0,\"b\":0,\"e\":\"off\"}},\"id\":49}");
     assert(matrix_val == 120);
 
+    // The app sends numeric Work Louder effect ids. Cover the complete effect
+    // catalog on the shared 16-key lighting zone.
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0},\"ambient\":{\"c\":3166206,\"b\":1,\"e\":2,\"s\":0.4,\"m\":0}},\"id\":52}");
+    fake_timer = 0;
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[0][0] == 0 && colors[0][1] == 0 && colors[0][2] == 0);
+    assert(colors[15][0] > 0 && colors[15][2] > colors[15][0]);
+    assert(colors[3][0] == 0 && colors[3][1] == 0 && colors[3][2] == 0);
+
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":65356,\"b\":1,\"e\":1,\"s\":0,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":53}");
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[2][0] == 0 && colors[2][1] == 255 && colors[2][2] == 76);
+
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":0,\"b\":1,\"e\":3,\"s\":0.4,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":54}");
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(memcmp(colors[2], colors[3], sizeof(colors[2])) != 0);
+
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":255,\"b\":1,\"e\":4,\"s\":0.4,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":55}");
+    fake_timer = 0;
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[2][2] == 0);
+    fake_timer = 1460;
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[2][2] > 245);
+
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":16711680,\"b\":1,\"e\":5,\"s\":0,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":56}");
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[0][0] < colors[3][0]);
+
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":16777215,\"b\":1,\"e\":6,\"s\":0.4,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":57}");
+    fake_timer = 0;
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[2][0] >= 128 && colors[2][1] >= 128 && colors[2][2] >= 128);
+
+    feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":3166206,\"b\":1,\"e\":1,\"s\":0.4,\"sk\":1,\"sa\":0}],\"id\":58}");
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":59}");
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[2][0] == 0 && colors[2][1] == 92 && colors[2][2] == 255);
+
+    feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"sk\":0,\"sa\":0}],\"id\":60}");
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":61}");
+
+    // A selected working task asks for solid keys and a snake ambient ring at
+    // once. The KB16 composites both onto its single physical LED zone.
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":3166206,\"b\":1,\"e\":1,\"s\":0,\"m\":0},\"ambient\":{\"c\":3166206,\"b\":1,\"e\":2,\"s\":0.4,\"m\":0}},\"id\":62}");
+    fake_timer = 0;
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[3][2] > 0 && colors[3][2] < 171);
+    assert(colors[14][2] > colors[3][2]);
+    feed_json("{\"method\":\"v.oai.rgbcfg\",\"params\":{\"keys\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0},\"ambient\":{\"c\":0,\"b\":0,\"e\":0,\"s\":0,\"m\":0}},\"id\":63}");
+
     clear_reports();
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":1,\"e\":\"solid\"},{\"id\":1,\"c\":16777215,\"b\":1,\"e\":\"solid\"},{\"id\":2,\"c\":16777215,\"b\":1,\"e\":\"solid\"},{\"id\":3,\"c\":16777215,\"b\":1,\"e\":\"solid\"},{\"id\":4,\"c\":16777215,\"b\":1,\"e\":\"solid\"},{\"id\":5,\"c\":16777215,\"b\":1,\"e\":\"solid\"}],\"id\":50}");
     assert(matrix_val == 120);
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
-    assert(colors[0][0] == 215 && colors[0][1] == 211 && colors[0][2] == 255);
-    assert(colors[15][0] == colors[0][0] && colors[15][1] == colors[0][1] && colors[15][2] == colors[0][2]);
+    assert(colors[0][0] == 255 && colors[0][1] == 208 && colors[0][2] == 154);
+    assert(colors[15][0] == 0 && colors[15][1] == 0 && colors[15][2] == 0);
 
     clear_reports();
     codex_micro_send_agent_key(0, true);

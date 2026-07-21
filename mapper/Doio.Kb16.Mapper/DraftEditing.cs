@@ -9,7 +9,7 @@ public static class DraftEditing
         ArgumentNullException.ThrowIfNull(draft);
         if (index is < 0 or >= 16) throw new ArgumentOutOfRangeException(nameof(index));
         var currentIndex = Array.IndexOf(draft.NativeKeys, desired);
-        if (currentIndex < 0) throw new InvalidDataException("草稿缺少所选 Codex 原生控件。");
+        if (currentIndex < 0) throw new InvalidDataException("The draft is missing the selected native Codex control.");
         (draft.NativeKeys[index], draft.NativeKeys[currentIndex]) = (draft.NativeKeys[currentIndex], draft.NativeKeys[index]);
     }
 

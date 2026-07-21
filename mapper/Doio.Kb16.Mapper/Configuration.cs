@@ -56,13 +56,13 @@ public sealed class DeviceConfiguration
         foreach (var layer in Layers)
             foreach (var action in layer.Encoders)
                 WriteAction(data, ref offset, action);
-        if (offset != PayloadSize) throw new InvalidOperationException($"配置长度错误：{offset}");
+        if (offset != PayloadSize) throw new InvalidOperationException($"Invalid configuration length: {offset}");
         return data;
     }
 
     public static DeviceConfiguration FromBinary(ReadOnlySpan<byte> data)
     {
-        if (data.Length != PayloadSize) throw new InvalidDataException($"设备配置长度应为 {PayloadSize} 字节。");
+        if (data.Length != PayloadSize) throw new InvalidDataException($"The device configuration must be {PayloadSize} bytes long.");
         var result = new DeviceConfiguration();
         var offset = 0;
         result.NativeKeys = new NativeControl[16];
@@ -88,14 +88,14 @@ public sealed class DeviceConfiguration
 
     public void Validate()
     {
-        if (SchemaVersion != 1) throw new InvalidDataException("只支持配置 Schema 1。");
+        if (SchemaVersion != 1) throw new InvalidDataException("Only configuration schema 1 is supported.");
         if (NativeKeys.Length != 16 || NativeKeys.Distinct().Count() != 16 || NativeKeys.Any(value => (byte)value >= 16))
-            throw new InvalidDataException("Codex 层必须恰好包含16个不重复的原生控件。");
-        if (CodexEncoders.Length != 6 || Layers.Length != 3) throw new InvalidDataException("旋钮或层数量无效。");
+            throw new InvalidDataException("The Codex layer must have exactly 16 distinct native controls.");
+        if (CodexEncoders.Length != 6 || Layers.Length != 3) throw new InvalidDataException("The encoder or layer count is invalid.");
         ValidateActions(CodexEncoders);
         foreach (var layer in Layers)
         {
-            if (layer.Keys.Length != 16 || layer.Encoders.Length != 9) throw new InvalidDataException("普通层必须包含16键和9个旋钮动作。");
+            if (layer.Keys.Length != 16 || layer.Encoders.Length != 9) throw new InvalidDataException("Each ordinary layer must have 16 keys and 9 encoder actions.");
             ValidateActions(layer.Keys);
             ValidateActions(layer.Encoders);
         }
@@ -114,7 +114,7 @@ public sealed class DeviceConfiguration
                 ActionKind.Firmware => action.Modifiers == 0 && action.Code is >= 1 and <= 19,
                 _ => false,
             };
-            if (!valid) throw new InvalidDataException($"非法动作：{action.Kind}/{action.Modifiers}/{action.Code}");
+            if (!valid) throw new InvalidDataException($"Invalid action: {action.Kind}/{action.Modifiers}/{action.Code}");
         }
     }
 

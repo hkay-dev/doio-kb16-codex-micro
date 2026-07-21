@@ -40,8 +40,8 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
             if (device.TryOpen(out var stream)) return new ConfigProtocolClient(device, stream);
         }
         if (foundCompatibleDevice)
-            throw new DeviceConnectionException("找到了 Codex Micro 配置接口，但无法打开。请关闭其他可能独占 HID 的配置器后重试。", true);
-        throw new DeviceConnectionException("未找到可配置的 303A:8360 Codex Micro HID 接口。请确认设备已连接并运行 v1.3 固件。");
+            throw new DeviceConnectionException("The Codex Micro configuration interface was found but couldn't be opened. Close any other configurator that may have claimed the HID interface, then try again.", true);
+        throw new DeviceConnectionException("No configurable 303A:8360 Codex Micro HID interface was found. Check that the device is connected and running the v1.3 firmware.");
     }
 
     public async Task<(uint Generation, uint Crc, ushort ConfigLength)> HelloAsync(CancellationToken cancellationToken = default)
@@ -61,7 +61,7 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
     {
         if (payload.Length == 1) EnsureStatus(payload, 1);
         if (payload.Length != 16 || payload[0] != 0 || payload[1] != 1 || payload[2] != 4 || payload[3] != 16 || payload[14] != 3 || payload[15] != 3)
-            throw new InvalidDataException("设备返回了不兼容的配置能力。");
+            throw new InvalidDataException("The device reported incompatible configuration capabilities.");
         return (BinaryPrimitives.ReadUInt32LittleEndian(payload[6..]), BinaryPrimitives.ReadUInt32LittleEndian(payload[10..]), BinaryPrimitives.ReadUInt16LittleEndian(payload[4..]));
     }
 
@@ -78,15 +78,15 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
             {
                 var packet = await ReadPacketAsync(2, id, cancellationToken);
                 expected = packet.ChunkCount;
-                if (packet.ChunkIndex >= expected || chunks.ContainsKey(packet.ChunkIndex)) throw new InvalidDataException("设备返回了重复或越界分片。");
+                if (packet.ChunkIndex >= expected || chunks.ContainsKey(packet.ChunkIndex)) throw new InvalidDataException("The device returned a duplicate or out-of-range chunk.");
                 chunks.Add(packet.ChunkIndex, packet.Payload.ToArray());
             } while (chunks.Count < expected);
             var bytes = chunks.OrderBy(item => item.Key).SelectMany(item => item.Value).ToArray();
-            if (bytes.Length != 8 + DeviceConfiguration.PayloadSize) throw new InvalidDataException("设备配置响应长度无效。");
+            if (bytes.Length != 8 + DeviceConfiguration.PayloadSize) throw new InvalidDataException("The device returned a configuration response with an invalid length.");
             var generation = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(0, 4));
             var crc = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(4, 4));
             var configBytes = bytes.AsSpan(8).ToArray();
-            if (Crc32.Compute(configBytes) != crc) throw new ConfigurationVerificationException("设备配置 CRC 校验失败。");
+            if (Crc32.Compute(configBytes) != crc) throw new ConfigurationVerificationException("The device configuration failed its CRC check.");
             return new DeviceSnapshot(generation, crc, DeviceConfiguration.FromBinary(configBytes));
         }
         finally { _gate.Release(); }
@@ -118,7 +118,7 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
         }
         finally { _gate.Release(); }
         var snapshot = await ReadConfigurationAsync(cancellationToken);
-        if (snapshot.Crc32 != crc || !snapshot.Configuration.ToBinary().SequenceEqual(bytes)) throw new ConfigurationVerificationException("写入后的配置回读不一致。");
+        if (snapshot.Crc32 != crc || !snapshot.Configuration.ToBinary().SequenceEqual(bytes)) throw new ConfigurationVerificationException("The configuration read back after the write doesn't match.");
         return snapshot;
     }
 
@@ -151,7 +151,7 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
     {
         if (payload.Length == 1) EnsureStatus(payload, 7);
         if (payload.Length != 5 || payload[0] > 1 || payload[1] == 0)
-            throw new InvalidDataException("设备返回了无效的灯光状态。");
+            throw new InvalidDataException("The device returned an invalid lighting state.");
         return new LightingState(payload[0] != 0, payload[1], payload[2], payload[3], payload[4]);
     }
 
@@ -164,7 +164,7 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
         var current = await ReadLightingAsync(cancellationToken);
         if (!current.Enabled || current.Mode != SolidColorMode || current.Hue != hue || current.Saturation != saturation || current.Value != value)
             throw new ConfigurationVerificationException(
-                $"保存后的灯光参数回读不一致。期望 H/S/V {hue}/{saturation}/{value}，设备返回 {current.Hue}/{current.Saturation}/{current.Value}。");
+                $"The lighting values read back after saving don't match. Expected H/S/V {hue}/{saturation}/{value}, but the device returned {current.Hue}/{current.Saturation}/{current.Value}.");
         return current;
     }
 
@@ -205,26 +205,26 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
             var buffer = new byte[_device.GetMaxInputReportLength()];
             int count;
             try { count = await _stream.ReadAsync(buffer, 0, buffer.Length, timeout.Token); }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { throw new TimeoutException("等待设备 Channel 3 响应超时。"); }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { throw new TimeoutException("Timed out waiting for a response on device Channel 3."); }
             var offset = count > ReportSize && buffer[0] == 0 && buffer[1] == ReportId ? 1 : 0;
             if (count - offset < ReportSize) continue;
             var report = buffer.AsSpan(offset, ReportSize);
             if (report[0] != ReportId || report[1] != Channel || report[2] != Version || report[3] != (byte)(opcode | 0x80)) continue;
             if (BinaryPrimitives.ReadUInt16LittleEndian(report[4..]) != id) continue;
             var length = report[8];
-            if (length > FragmentSize) throw new InvalidDataException("设备返回的分片过长。");
+            if (length > FragmentSize) throw new InvalidDataException("The device returned a chunk that's too long.");
             return new Packet(report[6], report[7], report.Slice(HeaderSize, length).ToArray());
         }
     }
 
     private static void EnsureStatus(ReadOnlySpan<byte> payload, byte opcode)
     {
-        if (payload.Length != 1) throw new InvalidDataException("设备确认包格式无效。");
+        if (payload.Length != 1) throw new InvalidDataException("The device returned an invalid acknowledgement packet.");
         if (payload[0] == 0) return;
         var message = payload[0] switch
         {
-            1 => "协议版本不匹配", 2 => "未知操作", 3 => "长度错误", 4 => "分片顺序错误", 5 => "CRC错误",
-            6 => "配置内容非法", 7 => "仍有按键按住", 8 => "设备存储写入失败", 9 => "写入会话不存在", _ => $"状态 {payload[0]}",
+            1 => "Protocol version mismatch", 2 => "Unknown operation", 3 => "Invalid length", 4 => "Invalid chunk order", 5 => "CRC error",
+            6 => "Invalid configuration", 7 => "A control is still held", 8 => "Device storage write failed", 9 => "No write session exists", _ => $"Status {payload[0]}",
         };
         throw new DeviceProtocolException(opcode, payload[0], message);
     }

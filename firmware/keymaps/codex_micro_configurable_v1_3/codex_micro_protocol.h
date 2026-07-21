@@ -14,6 +14,16 @@
 #define CODEX_MICRO_FRAGMENT_SIZE 61
 
 typedef enum {
+    CODEX_MICRO_SLOT_OFF,
+    CODEX_MICRO_SLOT_IDLE,
+    CODEX_MICRO_SLOT_WORKING,
+    CODEX_MICRO_SLOT_COMPLETE,
+    CODEX_MICRO_SLOT_ATTENTION,
+    CODEX_MICRO_SLOT_ERROR,
+    CODEX_MICRO_SLOT_OTHER,
+} codex_micro_slot_state_t;
+
+typedef enum {
     CODEX_MICRO_ACTION_06,
     CODEX_MICRO_ACTION_07,
     CODEX_MICRO_ACTION_08,
@@ -39,3 +49,13 @@ void codex_micro_send_joystick_direction(codex_micro_joystick_direction_t direct
 void codex_micro_send_encoder_turn(bool clockwise);
 void codex_micro_send_encoder_press(bool pressed);
 bool codex_micro_rgb_indicators(uint8_t led_min, uint8_t led_max);
+bool codex_micro_host_connected(void);
+codex_micro_slot_state_t codex_micro_slot_state(uint8_t slot);
+char codex_micro_slot_mark(uint8_t slot);
+int8_t codex_micro_selected_slot(void);
+const char *codex_micro_alert_label(void);
+uint8_t codex_micro_alert_slot(void);
+void codex_micro_preview_alert(uint8_t alert);
+void codex_micro_preview_effect(uint8_t effect);
+void codex_micro_preview_status_demo(void);
+void codex_micro_cancel_previews(void);

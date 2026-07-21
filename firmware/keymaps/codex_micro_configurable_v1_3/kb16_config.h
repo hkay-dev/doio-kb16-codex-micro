@@ -13,6 +13,7 @@
 #define KB16_CONFIG_PAYLOAD_SIZE 340
 #define KB16_CONFIG_SLOT_SIZE 356
 #define KB16_CONFIG_STORAGE_SIZE (KB16_CONFIG_SLOT_SIZE * 2)
+#define KB16_USER_STORAGE_SIZE 728
 
 typedef enum {
     KB16_NATIVE_AG00,
@@ -123,7 +124,11 @@ bool kb16_config_input_busy(void);
 
 uint32_t kb16_config_crc32(const void *data, size_t length);
 
+void kb16_user_storage_read(void *target, uint32_t offset, uint32_t length);
+void kb16_user_storage_write(const void *source, uint32_t offset, uint32_t length);
+
 #ifdef CODEX_MICRO_HOST_TEST
 void kb16_config_host_clear_storage(void);
 void kb16_config_host_corrupt_slot(uint8_t slot, uint16_t offset);
+void kb16_config_host_copy_storage(void *target, uint32_t offset, uint32_t length);
 #endif

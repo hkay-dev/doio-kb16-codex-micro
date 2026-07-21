@@ -1,32 +1,34 @@
-# DOIO KB16 / Work Louder Input 兼容性勘测
+# DOIO KB16 and Work Louder Input compatibility survey
 
-日期：2026-07-19
-对象：DOIO KB16 Rev2，`codex_micro_compat_v1_2`
-方式：实时枚举、Input 日志取证、Input 0.17.0 离线静态分析；未安装更新、未写配置、未刷写设备。
+Date: 2026-07-19
 
-## 结论
+Target: DOIO KB16 Rev2 running `codex_micro_compat_v1_2`
 
-当前 v1.2 已通过 Input 的设备发现和基础 RPC 握手，但尚未达到 Input 可配置状态。
+Method: live enumeration, Input log analysis, and offline static analysis of Input 0.17.0. No update was installed, no configuration was written, and no device was flashed.
 
-- Input 将设备正确识别为 `codex_micro`。
-- `sys.version`、`device.status` 和 `host.focused_app` 已能正常通信。
-- Input 随后调用 `fs.list` 读取设备配置文件，固件返回 `Method not found`。
-- 因为无法取得 `keymap.json` 和 `smart_actions.json`，Input 无法载入或保存按键、旋钮、摇杆、层及快捷键配置。
-- 兼容性瓶颈不是 USB 身份，而是设备文件系统与动态键位执行层。
+## Conclusion
 
-当前可评为：**发现兼容、基础 RPC 兼容、配置协议不兼容**。
+The current v1.2 firmware passes Input's device discovery and basic RPC handshake, but Input can't configure it yet.
 
-## 现场状态
+- Input correctly identifies the device as `codex_micro`.
+- `sys.version`, `device.status`, and `host.focused_app` work.
+- Input then calls `fs.list` to read the device configuration files, and the firmware returns `Method not found`.
+- Input can't load or save keys, encoders, the joystick, layers, or shortcuts because it can't get `keymap.json` and `smart_actions.json`.
+- USB identity isn't the compatibility blocker. The missing pieces are the device filesystem and a dynamic keymap execution layer.
 
-- USB：`VID 303A / PID 8360`
-- Input 识别类型：`codex_micro`
-- HID 通信：厂商自定义 Usage Page `0xFF00`
-- Input 安装版本：`0.17.0`
-- 已下载但未安装版本：`0.17.1`
-- 0.17.1 官方变更仅为修复关闭弹窗时灯光变化反转，不涉及 Codex Micro 设备模型或文件协议。
-- 勘测开始时 Input 已在运行；本次没有启动、关闭或操作其界面。
+Current rating is **discovery compatible, basic RPC compatible, configuration protocol incompatible**.
 
-Input 日志中的成功响应：
+## Observed state
+
+- USB: `VID 303A / PID 8360`
+- Input device type: `codex_micro`
+- HID transport: vendor-defined Usage Page `0xFF00`
+- Installed Input release: `0.17.0`
+- Downloaded but not installed: `0.17.1`
+- The only official 0.17.1 change fixes a lighting reversal when closing a popup. It doesn't change the Codex Micro device model or file protocol.
+- Input was already running when the survey began. The survey didn't start, stop, or use its interface.
+
+Successful responses in the Input log:
 
 ```json
 {"id":297,"result":{"version":"0.1.0-qmk"}}
@@ -34,146 +36,146 @@ Input 日志中的成功响应：
 {"id":534,"result":{"version":"0.1.0-qmk","profile_index":0,"layer_index":1,"battery":100,"is_charging":false}}
 ```
 
-关键失败：
+The important failure was:
 
 ```text
 method: fs.list
 Error: Method not found
 ```
 
-日志中没有发现 `fs.write`、`fs.writebin`、`fs.delete`、`fs.begin`、`fs.commit`、`sys.bootloader` 或 `sys.selftest`，因此没有证据表明本次连接写入了配置或进入刷写流程。
+The logs have no `fs.write`, `fs.writebin`, `fs.delete`, `fs.begin`, `fs.commit`, `sys.bootloader`, or `sys.selftest` calls, so there's no sign that this connection wrote configuration or entered a flashing flow.
 
-## Input 如何识别 Codex Micro
+## How Input identifies Codex Micro
 
-Input 0.17.0 使用以下条件：
+Input 0.17.0 uses these checks:
 
-1. VID 必须为十进制 `12346`，即 `0x303A`。
-2. PID `33632`，即 `0x8360`，被注册为 `codex_micro`。
-3. HID Usage Page 必须为 `65280`，即 `0xFF00`。
-4. 厂商字符串优先匹配 `Work Louder` 或 `Work_Louder`；找不到厂商匹配时会退回只按 VID 筛选。
+1. VID must be decimal `12346`, which is `0x303A`.
+2. PID `33632`, which is `0x8360`, is registered as `codex_micro`.
+3. HID Usage Page must be `65280`, which is `0xFF00`.
+4. The vendor string should match `Work Louder` or `Work_Louder`. When no vendor matches, Input falls back to filtering by VID alone.
 
-v1.2 已满足这些条件，所以无需更改 USB 身份。
+v1.2 meets these checks, so its USB identity doesn't need to change.
 
-## ChatGPT 与 Input 的职责边界
+## ChatGPT and Input ownership
 
-Input 内置的 Codex Micro 原生第 1 层包含：
+Input's built-in native Codex Micro layer 1 has:
 
-- `AG00–AG05`
-- `ACT06–ACT12`
+- `AG00-AG05`
+- `ACT06-ACT12`
 - `ENC_CC / ENC_CW / ENC_CLK`
 - Vendor Joystick
 
-Input 明确锁定 Codex Micro 的第 1 层，界面提示该层必须使用 Codex Micro 应用配置。因此：
+Input locks Codex Micro layer 1 and tells the user to configure that layer in the Codex Micro app. That splits responsibility this way:
 
-- ChatGPT/Codex 继续管理原生任务键、命令键、语音、技能和原生旋钮。
-- Input 主要管理后续自定义层、普通键盘快捷键、Action、Multi Action、灯光和 AppSense。
-- ChatGPT 中“自定义快捷键”与 Input 的具体交接方式，不能仅凭现有 UI 文案确认；Input 0.17.0 的静态代码并不允许直接编辑原生第 1 层。
+- ChatGPT and Codex own the native task keys, command keys, voice, skills, and native encoder.
+- Input mainly owns later custom layers, ordinary keyboard shortcuts, actions, multi-actions, lighting, and AppSense.
+- The exact handoff between ChatGPT's custom shortcuts and Input can't be proven from the current interface text alone. Input 0.17.0's static code doesn't let the user edit native layer 1 directly.
 
-## Input 的 Codex Micro 硬件模型
+## Input's Codex Micro hardware model
 
-Input 固定显示原生 Codex Micro 的：
+Input always shows the native Codex Micro as:
 
-- 13 个机械键，排列为 `2 + 4 + 4 + 3`
-- 1 个旋钮，包含逆时针、顺时针和按下三个动作
-- 1 个摇杆
-- 最多 6 个可编程层
+- 13 mechanical keys in a `2 + 4 + 4 + 3` layout
+- 1 encoder with counterclockwise, clockwise, and press actions
+- 1 joystick
+- Up to 6 programmable layers
 
-与 DOIO KB16 的对应关系：
+The DOIO KB16 maps to that model like this:
 
-- 12 个实体 Codex 键可对应 `AG00–AG05`、`ACT06–ACT10`、`ACT12`。
-- 原生模型中的 `ACT11` 在本项目中没有实体键，应保持空槽。
-- 四个实体方向键可作为摇杆的四方向输入。
-- 左旋钮可作为 Input 唯一显示的原生旋钮。
-- 中、右旋钮不会出现在 Codex Micro 的 Input 模型中，应继续保持 QMK 原有行为。
-- Input 不会显示 KB16 的物理 4×4 外观，而会显示原生 Codex Micro 外观。
+- 12 physical Codex keys can cover `AG00-AG05`, `ACT06-ACT10`, and `ACT12`.
+- This project has no physical key for the native model's `ACT11`, so that slot should stay empty.
+- The four physical arrow keys can act as the joystick's four directions.
+- The left encoder can act as Input's one native encoder.
+- The middle and right encoders don't appear in Input's Codex Micro model and should keep their fixed QMK behavior.
+- Input shows the native Codex Micro shape, not the KB16's physical 4x4 layout.
 
-## Input 需要的配置文件
+## Configuration files Input expects
 
-Input 通过设备文件系统管理两份主要文件：
+Input manages two main files through the device filesystem.
 
 ### `keymap.json`
 
-包含：
+It has:
 
-- 配置版本与当前 Profile
-- Profiles 和 Layers
-- 每层按键矩阵、旋钮和摇杆映射
-- Actions/macros
-- Multi Actions
-- Action 分组
-- AppSense 的 `linkedApps`
-- 灯光配置
+- Configuration version and current profile
+- Profiles and layers
+- Per-layer key matrix, encoder, and joystick maps
+- Actions and macros
+- Multi-actions
+- Action groups
+- AppSense `linkedApps`
+- Lighting settings
 
 ### `smart_actions.json`
 
-包含主机协助执行的 Smart Actions，例如：
+It holds host-assisted Smart Actions such as:
 
-- 插入文本：`kb.sa.inserttext`
-- 执行命令：`kb.sa.exec`
-- 打开网址：`kb.sa.openurl`
-- 打开应用：`kb.sa.openapp`
+- Insert text: `kb.sa.inserttext`
+- Run a command: `kb.sa.exec`
+- Open a URL: `kb.sa.openurl`
+- Open an app: `kb.sa.openapp`
 
-Input 0.17.0 的 Codex Micro 功能标记中，Smart Action 和 Cheat Sheet 当前均为禁用状态。因此首版兼容无需实现这些高风险动作。
+Input 0.17.0 disables both Smart Actions and the Cheat Sheet for Codex Micro, so the first compatible release doesn't need these riskier actions.
 
-## 缺失的 RPC
+## Missing RPC methods
 
-Input 配置所需的文件 RPC：
+Input needs these file RPC methods:
 
-| RPC | 用途 | v1.2 |
+| RPC | Purpose | v1.2 |
 |---|---|---|
-| `fs.list` | 列出文件、大小和校验值 | 缺失 |
-| `fs.readbin` | 分块读取文件 | 缺失 |
-| `fs.writebin` | Base64 分块写入文件 | 缺失 |
-| `fs.delete` | 删除文件 | 缺失 |
-| `fs.begin` / `fs.commit` | 多文件事务 | 缺失，首版可暂缓 |
-| `fs.read` / `fs.write` | 小型 JSON 文件接口 | 缺失，Input 主流程主要使用分块接口 |
+| `fs.list` | List files, sizes, and checksums | Missing |
+| `fs.readbin` | Read a file in chunks | Missing |
+| `fs.writebin` | Write Base64 chunks | Missing |
+| `fs.delete` | Delete a file | Missing |
+| `fs.begin` / `fs.commit` | Multi-file transaction | Missing, can wait for a later release |
+| `fs.read` / `fs.write` | Small JSON-file interface | Missing, and Input's main path mostly uses the chunked interface |
 
-现有且已验证：
+Already present and tested:
 
-| RPC | 状态 |
+| RPC | State |
 |---|---|
-| `sys.version` | 通过 |
-| `device.status` | 通过 |
-| `host.focused_app` | 通过，但目前只确认收到并应答 |
-| `lights.preview` | v1.2 已应答 |
-| Codex `v.oai.*` | 已由 v1.2 实机验证 |
+| `sys.version` | Passes |
+| `device.status` | Passes |
+| `host.focused_app` | Passes, though testing only proved that the firmware receives and acknowledges it |
+| `lights.preview` | v1.2 acknowledges it |
+| Codex `v.oai.*` | Tested on real v1.2 hardware |
 
-`fs.writebin` 每块最多承载 4096 个 Base64 字符，参数包括文件名、数据、偏移、是否追加和是否完成。`fs.readbin` 需要返回 Base64 数据及 `total_size`。
+Each `fs.writebin` chunk can carry up to 4,096 Base64 characters. Its arguments have the filename, data, offset, append flag, and completion flag. `fs.readbin` must return Base64 data and `total_size`.
 
-## 下一阶段建议
+## Suggested next stage
 
-建议新建独立 `codex_micro_input_compat_v1_3`，不修改 v1.2：
+Create a separate `codex_micro_input_compat_v1_3` keymap and leave v1.2 alone.
 
-1. 先实现只读 `fs.list` 和 `fs.readbin`，提供最小有效的 `keymap.json`，验证 Input 能完整打开 Codex Micro 页面。
-2. 将配置存储在 MCU Flash/EEPROM 的独立区域，采用双缓冲、长度、版本和 CRC，避免断电损坏。
-3. 再实现 `fs.writebin`，只允许写入 `keymap.json`；限制总长度、偏移和 JSON 结构，完成后原子切换。
-4. 为 5 个自定义层实现 Input keycode 到 QMK 键码、组合键、Action 和 Multi Action 的执行器；原生第 1 层继续使用现有 Codex 事件。
-5. 接入 `host.focused_app` 的 `linkedApps` 自动切层，但保留物理中旋钮切层和恢复路径。
-6. 首版不实现 Smart Action、命令执行、固件更新、Bootloader、自测试或任意文件名写入。
-7. 保持中、右旋钮为固件固定功能；Input 只控制左旋钮和 12 个实体 Codex 键/四方向。
+1. Add read-only `fs.list` and `fs.readbin` with a minimal valid `keymap.json`, then check whether Input can open the full Codex Micro page.
+2. Store the configuration in a separate MCU flash or EEPROM region with dual buffers, a length, a version, and a CRC so power loss can't corrupt both copies.
+3. Add `fs.writebin` for `keymap.json` only. Cap the total length and offsets, validate the JSON shape, and switch buffers atomically when the upload finishes.
+4. Add an Input-keycode executor for five custom layers covering QMK keycodes, chords, actions, and multi-actions. Keep the native first layer on the current Codex event path.
+5. Use `host.focused_app` and `linkedApps` for automatic layer switching, with the middle encoder and a physical recovery path still available.
+6. Leave out Smart Actions, command execution, firmware updates, bootloader entry, self-test, and writes to arbitrary filenames in the first release.
+7. Keep the middle and right encoders fixed in firmware. Let Input control only the left encoder, 12 physical Codex keys, and the four directions.
 
-## 风险与验收重点
+## Risks and acceptance checks
 
-- QMK 可用 Flash 和 RAM 是否容纳 JSON、分块缓冲、配置存储及执行器。
-- Input 使用 13 键原生模型，而本项目只有 12 个非摇杆键；必须稳定屏蔽 `ACT11` 空槽。
-- Input 声称 6 层，而当前 KB16 固件为 4 层；是否扩为 6 层需要单独确认，不能静默改变中旋钮现有切层体验。
-- ChatGPT 和 Input 可能同时打开同一 Raw HID 接口，需验证并发读写、断线重连和消息分片不会互相干扰。
-- 必须阻止 Input 通过任何路径触发固件更新或 Bootloader。
-- 写配置前必须保留恢复默认配置和 Bootmagic 恢复路径。
+- Check whether QMK's available flash and RAM can hold the JSON, chunk buffer, stored configuration, and executor.
+- Input models 13 native keys, while this project has only 12 non-joystick keys. The empty `ACT11` slot must stay safely disabled.
+- Input advertises 6 layers, while the current KB16 firmware has 4. Expanding to 6 needs its own decision and shouldn't silently change the middle encoder's current layer behavior.
+- ChatGPT and Input may open the same Raw HID interface at once. Test concurrent I/O, reconnects, and message fragmentation.
+- Block every Input path that could update firmware or enter the bootloader.
+- Keep both a restore-default action and a Bootmagic recovery path before allowing configuration writes.
 
-## 本次未执行
+## Not done during this survey
 
-- 未安装 Input 0.17.1
-- 未点击 Input 中的保存、同步或更新
-- 未向设备发送测试写入
-- 未修改 QMK 源码或固件
-- 未编译、未刷写设备
+- Input 0.17.1 wasn't installed.
+- No Save, Sync, or Update control was used in Input.
+- No test write was sent to the device.
+- No QMK source or firmware was changed.
+- Nothing was compiled or flashed.
 
-## 资料来源
+## Sources
 
-- Work Louder Input：<https://worklouder.cc/input>
-- Codex Micro 产品说明：<https://worklouder.cc/codex-micro>
-- Input 0.17.1 发布说明：<https://github.com/worklouder/input-releases/releases/tag/v0.17.1>
-- 本机 Input 日志：`C:\Users\黄辰飏\AppData\Roaming\input\logs\main.log`
-- 本机 Input 0.17.0：`C:\Users\黄辰飏\AppData\Local\Programs\input`
-- v1.2 固件源码与工件：`outputs\codex_micro_compat_v1_2`
+- Work Louder Input: <https://worklouder.cc/input>
+- Codex Micro product page: <https://worklouder.cc/codex-micro>
+- Input 0.17.1 release notes: <https://github.com/worklouder/input-releases/releases/tag/v0.17.1>
+- Local Input log: `C:\Users\黄辰飏\AppData\Roaming\input\logs\main.log`
+- Local Input 0.17.0 installation: `C:\Users\黄辰飏\AppData\Local\Programs\input`
+- v1.2 firmware source and artifact: `outputs\codex_micro_compat_v1_2`

@@ -3,11 +3,11 @@
 #include <string.h>
 
 #ifdef CODEX_MICRO_HOST_TEST
-static uint8_t host_eeprom[KB16_CONFIG_STORAGE_SIZE];
-static void storage_read(void *target, uint32_t offset, uint32_t length) {
+static uint8_t host_eeprom[KB16_USER_STORAGE_SIZE];
+void kb16_user_storage_read(void *target, uint32_t offset, uint32_t length) {
     memcpy(target, host_eeprom + offset, length);
 }
-static void storage_write(const void *source, uint32_t offset, uint32_t length) {
+void kb16_user_storage_write(const void *source, uint32_t offset, uint32_t length) {
     memcpy(host_eeprom + offset, source, length);
 }
 void kb16_config_host_clear_storage(void) {
@@ -18,12 +18,15 @@ void kb16_config_host_corrupt_slot(uint8_t slot, uint16_t offset) {
         host_eeprom[(uint16_t)slot * KB16_CONFIG_SLOT_SIZE + offset] ^= 0x5AU;
     }
 }
+void kb16_config_host_copy_storage(void *target, uint32_t offset, uint32_t length) {
+    memcpy(target, host_eeprom + offset, length);
+}
 #else
 #    include QMK_KEYBOARD_H
-static void storage_read(void *target, uint32_t offset, uint32_t length) {
+void kb16_user_storage_read(void *target, uint32_t offset, uint32_t length) {
     eeconfig_read_user_datablock(target, offset, length);
 }
-static void storage_write(const void *source, uint32_t offset, uint32_t length) {
+void kb16_user_storage_write(const void *source, uint32_t offset, uint32_t length) {
     eeconfig_update_user_datablock(source, offset, length);
 }
 #endif
@@ -246,9 +249,9 @@ bool kb16_config_commit(const kb16_config_payload_t *payload) {
         .payload = *payload,
     };
     uint8_t target = active_slot ^ 1U;
-    storage_write(&slot, (uint32_t)target * sizeof(slot), sizeof(slot));
+    kb16_user_storage_write(&slot, (uint32_t)target * sizeof(slot), sizeof(slot));
     kb16_config_slot_t verify;
-    storage_read(&verify, (uint32_t)target * sizeof(verify), sizeof(verify));
+    kb16_user_storage_read(&verify, (uint32_t)target * sizeof(verify), sizeof(verify));
     if (!slot_valid(&verify) || verify.generation != slot.generation) {
         return false;
     }
@@ -259,7 +262,7 @@ bool kb16_config_commit(const kb16_config_payload_t *payload) {
 void kb16_config_reset_defaults(void) {
     uint8_t erased[KB16_CONFIG_STORAGE_SIZE];
     memset(erased, 0, sizeof(erased));
-    storage_write(erased, 0, sizeof(erased));
+    kb16_user_storage_write(erased, 0, sizeof(erased));
 
     pressed_count = 0;
     active_slot = 1;
@@ -271,8 +274,8 @@ void kb16_config_reset_defaults(void) {
 
 void kb16_config_init(void) {
     kb16_config_slot_t slots[2];
-    storage_read(&slots[0], 0, sizeof(slots[0]));
-    storage_read(&slots[1], sizeof(slots[0]), sizeof(slots[1]));
+    kb16_user_storage_read(&slots[0], 0, sizeof(slots[0]));
+    kb16_user_storage_read(&slots[1], sizeof(slots[0]), sizeof(slots[1]));
     bool first_valid = slot_valid(&slots[0]);
     bool second_valid = slot_valid(&slots[1]);
     pressed_count = 0;

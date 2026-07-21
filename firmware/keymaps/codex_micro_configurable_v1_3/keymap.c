@@ -1,6 +1,8 @@
 #include QMK_KEYBOARD_H
 
 #include "codex_micro_protocol.h"
+#include "codex_micro_menu.h"
+#include "codex_micro_settings.h"
 #include "kb16_config.h"
 #include "oled_icons.h"
 
@@ -67,6 +69,10 @@ static bool             middle_pressed;
 static bool             middle_long_fired;
 static uint16_t         middle_pressed_at;
 static kb16_action_t    middle_short_action;
+static bool             right_pressed;
+static bool             right_long_fired;
+static uint16_t         right_pressed_at;
+static kb16_action_t    right_short_action;
 
 static void show_no_link(void) {
     oled_controller_show_popup("NO LINK", "CODEX MICRO", OLED_POPUP_ERROR_MS);
@@ -303,6 +309,7 @@ static uint8_t current_layer(void) {
 }
 
 static void handle_matrix_key(uint8_t position, bool pressed) {
+    if (codex_micro_menu_active()) return;
     held_control_t *held = &held_keys[position];
     if (pressed) {
         kb16_config_input_pressed();
@@ -330,6 +337,11 @@ static void handle_matrix_key(uint8_t position, bool pressed) {
 }
 
 static void handle_encoder_turn(uint8_t encoder, uint8_t action_index) {
+    if (codex_micro_menu_active()) {
+        if (encoder == 1) codex_micro_menu_navigate(action_index == KB16_ENCODER_CW);
+        else if (encoder == 2) codex_micro_menu_adjust(action_index == KB16_ENCODER_CW);
+        return;
+    }
     uint8_t layer = current_layer();
     if (layer == _CODEX && encoder == 0) {
         codex_micro_send_encoder_turn(action_index == KB16_ENCODER_CW);
@@ -339,6 +351,26 @@ static void handle_encoder_turn(uint8_t encoder, uint8_t action_index) {
 }
 
 static void handle_encoder_press(uint8_t encoder, bool pressed) {
+    if (encoder == 1 && (codex_micro_menu_active() || current_layer() == _CODEX || right_pressed)) {
+        if (pressed) {
+            right_pressed = true;
+            right_long_fired = false;
+            right_pressed_at = timer_read();
+            const kb16_action_t *action = kb16_config_encoder_action(current_layer(), encoder, KB16_ENCODER_PRESS);
+            right_short_action = action == NULL ? (kb16_action_t){0} : *action;
+        } else {
+            if (right_pressed && !right_long_fired) {
+                if (codex_micro_menu_active()) codex_micro_menu_select();
+                else tap_action(&right_short_action);
+            }
+            right_pressed = false;
+        }
+        return;
+    }
+    if (codex_micro_menu_active()) {
+        if (encoder == 2 && !pressed) codex_micro_menu_back();
+        return;
+    }
     if (encoder == 2) {
         if (pressed) {
             kb16_config_input_pressed();
@@ -407,17 +439,30 @@ void matrix_scan_user(void) {
     scan_no_link_guard(&stop_action);
     scan_no_link_guard(&archive_action);
     scan_boot_guard();
+    if (right_pressed && !right_long_fired && timer_elapsed(right_pressed_at) >= HOLD_ACTION_MS) {
+        right_long_fired = true;
+        if (codex_micro_menu_active()) codex_micro_menu_save_close();
+        else if (current_layer() == _CODEX && !kb16_config_input_busy()) codex_micro_menu_open();
+    }
     if (middle_pressed && !middle_long_fired && timer_elapsed(middle_pressed_at) >= MIDDLE_RETURN_MS) {
         middle_long_fired = true;
         layer_move(_CODEX);
         oled_controller_show_popup("CODEX", "RETURN", OLED_POPUP_NORMAL_MS);
     }
     codex_micro_task();
+#ifdef OLED_ENABLE
+    if (oled_get_brightness() != codex_micro_settings_get()->oled_brightness) oled_set_brightness(codex_micro_settings_get()->oled_brightness);
+#endif
 }
 
 void keyboard_post_init_user(void) {
     kb16_config_init();
+    codex_micro_settings_init();
+    codex_micro_menu_init();
     codex_micro_init();
+#ifdef OLED_ENABLE
+    oled_set_brightness(codex_micro_settings_get()->oled_brightness);
+#endif
 }
 
 #ifdef RGB_MATRIX_ENABLE

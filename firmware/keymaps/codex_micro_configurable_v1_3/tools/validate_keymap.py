@@ -22,6 +22,10 @@ def main():
     transport_c = read("kb16_config_transport.c")
     protocol_h = read("codex_micro_protocol.h")
     protocol_c = read("codex_micro_protocol.c")
+    settings_h = read("codex_micro_settings.h")
+    settings_c = read("codex_micro_settings.c")
+    alerts_c = read("codex_micro_alerts.c")
+    menu_c = read("codex_micro_menu.c")
     combined = "\n".join((keymap, config_h, rules, model_h, model_c,
                             transport_h, transport_c, protocol_h, protocol_c))
 
@@ -74,7 +78,7 @@ def main():
     required_usb = ("#define VENDOR_ID 0x303A", "#define PRODUCT_ID 0x8360",
                     "#define RAW_USAGE_PAGE 0xFF00", "#define RAW_USAGE_ID 0x01",
                     "#define RAW_REPORT_ID 0x06", "#define RAW_REPORT_COUNT 63",
-                    "#define RAW_EPSIZE 64", "#define EECONFIG_USER_DATA_SIZE 712")
+                    "#define RAW_EPSIZE 64", "#define EECONFIG_USER_DATA_SIZE 728")
     for token in required_usb:
         require(config_h, token, f"missing USB/storage identity: {token}")
     require(rules, "RAW_ENABLE = yes", "Raw HID disabled")
@@ -85,11 +89,17 @@ def main():
                   "ENC_CW", "ENC_CC", "ENC_SW", "v.oai.rad"):
         require(protocol_c, token, f"missing native protocol token: {token}")
     assert "ACT11" not in protocol_c, "ACT11 must never be emitted"
+    for token in ("CODEX_MICRO_SETTINGS_OFFSET 712U", "CODEX_MICRO_SETTINGS_SIZE 16U", "CODEX_MICRO_COMPLETION_UNTIL_FOCUS", "CODEX_MICRO_ALERT_LAYOUT_SLOT_FOCUS", "crc16_ccitt"):
+        require(settings_h + settings_c, token, f"missing settings storage boundary: {token}")
+    for token in ("CODEX_MICRO_ALERT_COMPLETION", "CODEX_MICRO_ALERT_APPROVAL", "CODEX_MICRO_ALERT_ERROR", "CODEX_MICRO_ALERT_REMINDER", "apply_alert_layout", "path_coordinates"):
+        require(alerts_c, token, f"missing alert behavior: {token}")
+    for token in ("codex_micro_menu_save_close", "codex_micro_menu_cancel", "CONFIRM RESET", "ALERT LAYOUT", "STATUS DEMO"):
+        require(menu_c, token, f"missing on-device menu behavior: {token}")
     for forbidden in ("VIA_ENABLE", "SERIAL_DRIVER", "Smart Action", "PROGRAM_EXEC"):
         assert forbidden not in combined, f"forbidden interface or action found: {forbidden}"
 
     print("Static validation passed: four configurable layers, 16 native controls, 25 controls per ordinary layer")
-    print("Channel 2/3 split, A/B CRC storage, moving AG LEDs, 303A:8360 report ID 6 and 64-byte reports verified")
+    print("Channel 2/3 split, A/B CRC storage plus isolated settings, moving AG LEDs, 303A:8360 report ID 6 and 64-byte reports verified")
 
 
 if __name__ == "__main__":

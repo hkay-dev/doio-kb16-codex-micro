@@ -65,19 +65,19 @@
                     <Image Source="Assets/Doio.Kb16.Mapper.png" Width="34" Height="34" Stretch="UniformToFill"/>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="DOIO KB16 Codex Mapper" FontSize="15" FontWeight="Bold"/>
-                        <TextBlock x:Name="BrandSubtitle" Text="四层键位与原生 Codex 控件" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0"/>
+                        <TextBlock x:Name="BrandSubtitle" Text="Four layers and native Codex controls" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0"/>
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0">
                     <Ellipse x:Name="ConnectionLed" Width="12" Height="12" Fill="#AAA9A1" Margin="0,0,10,0"/>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="StatusText" Text="尚未连接设备" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="StatusText" Text="Device not connected" FontWeight="SemiBold"/>
                         <TextBlock x:Name="ConfigMetaText" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}" FontSize="10" Margin="0,3,0,0"/>
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="LightingButton" Width="42" Height="42" Margin="0,0,4,0" BorderThickness="0" Background="Transparent"
-                            ToolTip="普通层灯光 · 设备未连接" AutomationProperties.Name="普通层灯光" IsEnabled="False" Click="LightingButton_Click">
+                            ToolTip="Ordinary-layer lighting · Device not connected" AutomationProperties.Name="Ordinary-layer lighting" IsEnabled="False" Click="LightingButton_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Grid Margin="5">
@@ -99,14 +99,14 @@
                         </Button.Template>
                         <Ellipse x:Name="LightingIndicator" Fill="#8E8D86" IsHitTestVisible="False"/>
                     </Button>
-                    <Button x:Name="ReadButton" Content="连接 / 读取" Style="{StaticResource SoftButtonStyle}" Click="ReadDevice_Click"/>
-                    <Button x:Name="MoreButton" Content="•••" ToolTip="更多操作" Style="{StaticResource IconButtonStyle}" Click="More_Click">
+                    <Button x:Name="ReadButton" Content="Connect / Read" Style="{StaticResource SoftButtonStyle}" Click="ReadDevice_Click"/>
+                    <Button x:Name="MoreButton" Content="•••" ToolTip="More actions" Style="{StaticResource IconButtonStyle}" Click="More_Click">
                         <Button.ContextMenu>
                             <ContextMenu Placement="Bottom">
-                                <MenuItem Header="导入 JSON" Click="Import_Click"/>
-                                <MenuItem Header="导出 JSON" Click="Export_Click"/>
+                                <MenuItem Header="Import JSON" Click="Import_Click"/>
+                                <MenuItem Header="Export JSON" Click="Export_Click"/>
                                 <Separator/>
-                                <MenuItem Header="恢复 v1.2 默认" Foreground="{StaticResource DangerBrush}" Click="Reset_Click"/>
+                                <MenuItem Header="Restore v1.2 Defaults" Foreground="{StaticResource DangerBrush}" Click="Reset_Click"/>
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
@@ -130,8 +130,8 @@
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="普通层灯光" FontSize="17" FontWeight="Bold"/>
-                            <TextBlock Text="数字、导航、系统三层共用" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,4,0,0"/>
+                            <TextBlock Text="Ordinary-Layer Lighting" FontSize="17" FontWeight="Bold"/>
+                            <TextBlock Text="Shared by Number, Navigation, and System" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,4,0,0"/>
                         </StackPanel>
                         <Border Grid.Column="1" Width="34" Height="34" CornerRadius="17" Background="#6C72C8" x:Name="LightingColorPreview">
                             <Border.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Direction="315" Color="#B1A18C" Opacity="0.28"/></Border.Effect>
@@ -139,15 +139,15 @@
                     </Grid>
 
                     <StackPanel Grid.Row="1" Margin="0,16,0,0">
-                        <Grid><TextBlock Text="亮度" FontWeight="SemiBold"/><TextBlock x:Name="BrightnessValueText" Text="47%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}"/></Grid>
+                        <Grid><TextBlock Text="Brightness" FontWeight="SemiBold"/><TextBlock x:Name="BrightnessValueText" Text="47%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}"/></Grid>
                         <Slider x:Name="BrightnessSlider" Minimum="0" Maximum="100" Value="47" SmallChange="1" LargeChange="5"
-                                AutomationProperties.Name="亮度" Style="{StaticResource LightingSliderStyle}" ValueChanged="LightingSlider_ValueChanged" Margin="0,5,0,0"/>
+                                AutomationProperties.Name="Brightness" Style="{StaticResource LightingSliderStyle}" ValueChanged="LightingSlider_ValueChanged" Margin="0,5,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Margin="0,12,0,0">
-                        <Grid><TextBlock Text="色相" FontWeight="SemiBold"/><TextBlock x:Name="HueValueText" Text="239°" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}"/></Grid>
+                        <Grid><TextBlock Text="Hue" FontWeight="SemiBold"/><TextBlock x:Name="HueValueText" Text="239°" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}"/></Grid>
                         <Slider x:Name="HueSlider" Minimum="0" Maximum="359" Value="239" SmallChange="1" LargeChange="10"
-                                AutomationProperties.Name="色相" Style="{StaticResource LightingSliderStyle}" ValueChanged="LightingSlider_ValueChanged" Margin="0,5,0,0">
+                                AutomationProperties.Name="Hue" Style="{StaticResource LightingSliderStyle}" ValueChanged="LightingSlider_ValueChanged" Margin="0,5,0,0">
                             <Slider.Background>
                                 <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
                                     <GradientStop Color="#E85D4A" Offset="0"/><GradientStop Color="#F2D34B" Offset="0.167"/>
@@ -160,9 +160,9 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="3" Margin="0,12,0,0">
-                        <Grid><TextBlock Text="饱和度" FontWeight="SemiBold"/><TextBlock x:Name="SaturationValueText" Text="55%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}"/></Grid>
+                        <Grid><TextBlock Text="Saturation" FontWeight="SemiBold"/><TextBlock x:Name="SaturationValueText" Text="55%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}"/></Grid>
                         <Slider x:Name="SaturationSlider" Minimum="0" Maximum="100" Value="55" SmallChange="1" LargeChange="5"
-                                AutomationProperties.Name="饱和度" Style="{StaticResource LightingSliderStyle}" ValueChanged="LightingSlider_ValueChanged" Margin="0,5,0,0"/>
+                                AutomationProperties.Name="Saturation" Style="{StaticResource LightingSliderStyle}" ValueChanged="LightingSlider_ValueChanged" Margin="0,5,0,0"/>
                     </StackPanel>
 
                     <Border x:Name="LightingError" Grid.Row="4" Margin="0,12,0,0" Padding="10,8" CornerRadius="7"
@@ -172,9 +172,9 @@
 
                     <Grid Grid.Row="5" Margin="0,16,0,0">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <TextBlock Text="拖动时实时预览" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center"/>
-                        <Button Grid.Column="1" Content="取消" Width="82" Style="{StaticResource SoftButtonStyle}" Click="CancelLighting_Click"/>
-                        <Button x:Name="SaveLightingButton" Grid.Column="2" Content="保存灯光" Width="112" MinWidth="112" Style="{StaticResource PrimaryButtonStyle}" Click="SaveLighting_Click"/>
+                        <TextBlock Text="Drag to preview live" Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Cancel" Width="82" Style="{StaticResource SoftButtonStyle}" Click="CancelLighting_Click"/>
+                        <Button x:Name="SaveLightingButton" Grid.Column="2" Content="Save Lighting" Width="112" MinWidth="112" Style="{StaticResource PrimaryButtonStyle}" Click="SaveLighting_Click"/>
                     </Grid>
                     </Grid>
                 </Border>
@@ -196,9 +196,9 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <TabControl x:Name="LayerTabs" SelectedIndex="0" Style="{StaticResource LayerTabsStyle}" ItemContainerStyle="{StaticResource LayerTabStyle}"
                                     SelectionChanged="LayerTabs_SelectionChanged" VerticalAlignment="Center">
-                            <TabItem Header="CODEX"/><TabItem Header="数字"/><TabItem Header="导航"/><TabItem Header="系统"/>
+                            <TabItem Header="CODEX"/><TabItem Header="NUMBER"/><TabItem Header="NAVIGATION"/><TabItem Header="SYSTEM"/>
                         </TabControl>
-                        <TextBlock x:Name="LayerNote" Grid.Column="1" Text="CODEX 层  16 个按键  3 个旋钮" Foreground="{StaticResource MutedBrush}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="LayerNote" Grid.Column="1" Text="CODEX layer  ·  16 keys  ·  3 encoders" Foreground="{StaticResource MutedBrush}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
                     <Border Grid.Row="1" x:Name="DeviceStage" Padding="18,14,18,12" CornerRadius="0,0,10,10">
                         <Border.Background>
@@ -230,13 +230,13 @@
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel x:Name="EditorHeader" Margin="16,14,16,10">
-                        <TextBlock x:Name="EditorTitle" Text="编辑所选控件" FontSize="18" FontWeight="Bold"/>
-                        <TextBlock x:Name="SelectedControlText" Text="请选择按键或旋钮动作" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="EditorTitle" Text="Edit Selected Control" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock x:Name="SelectedControlText" Text="Select a key or encoder action" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,4,0,0"/>
                         <Border Background="{StaticResource ControlBrush}" CornerRadius="8" Padding="12,9" Margin="0,10,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="当前草稿" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
+                                    <TextBlock Text="CURRENT DRAFT" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
                                     <TextBlock x:Name="CurrentActionText" Text="—" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0"/>
                                 </StackPanel>
                                 <TextBlock x:Name="CurrentDraftMark" Grid.Column="1" Text="" Foreground="#8D3B0B" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -245,15 +245,15 @@
                     </StackPanel>
                     <StackPanel x:Name="FilterPanel" Grid.Row="1" Margin="13,0,13,8">
                         <Grid>
-                            <TextBox x:Name="SearchBox" ToolTip="搜索动作或按键" TextChanged="Filter_Changed"/>
-                            <TextBlock x:Name="SearchWatermark" Text="搜索动作或按键" Foreground="#8A8982" Margin="15,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                            <TextBox x:Name="SearchBox" ToolTip="Search actions or keys" TextChanged="Filter_Changed"/>
+                            <TextBlock x:Name="SearchWatermark" Text="Search actions or keys" Foreground="#8A8982" Margin="15,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Grid>
                         <WrapPanel Margin="0,5,0,0">
-                            <RadioButton x:Name="CategoryAll" Content="全部" Tag="全部" GroupName="ActionCategory" IsChecked="True" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
-                            <RadioButton Content="键盘" Tag="键盘" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
-                            <RadioButton Content="媒体" Tag="媒体" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
-                            <RadioButton Content="鼠标" Tag="鼠标" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
-                            <RadioButton Content="设备" Tag="设备" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
+                            <RadioButton x:Name="CategoryAll" Content="All" Tag="All" GroupName="ActionCategory" IsChecked="True" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
+                            <RadioButton Content="Keyboard" Tag="Keyboard" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
+                            <RadioButton Content="Media" Tag="Media" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
+                            <RadioButton Content="Mouse" Tag="Mouse" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
+                            <RadioButton Content="Device" Tag="Device" GroupName="ActionCategory" Style="{StaticResource ChipStyle}" Click="Category_Click"/>
                         </WrapPanel>
                     </StackPanel>
                     <ListBox x:Name="ActionBox" Grid.Row="2" Style="{StaticResource ActionListStyle}" ItemContainerStyle="{StaticResource ActionItemStyle}"
@@ -270,7 +270,7 @@
                     </ListBox>
                     <Border x:Name="EditorFooterSurface" Grid.Row="3" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,10,10">
                         <StackPanel x:Name="ModifierPanel" Margin="12,8,12,10">
-                            <TextBlock Text="组合键修饰符" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
+                            <TextBlock Text="KEYBOARD MODIFIERS" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
                             <UniformGrid Columns="4" Margin="0,4,0,0">
                                 <CheckBox x:Name="CtrlBox" Content="Ctrl" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
                                 <CheckBox x:Name="ShiftBox" Content="Shift" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
@@ -289,10 +289,10 @@
                 <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="315" Color="#B7A792" Opacity="0.23"/></Border.Effect>
                 <StackPanel Width="560" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Image Source="Assets/Doio.Kb16.Mapper.png" Width="72" Height="72" HorizontalAlignment="Center"/>
-                    <TextBlock Text="连接你的 DOIO KB16" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,20,0,8"/>
-                    <TextBlock Text="读取设备后才能编辑四层键位。读取不会修改配置，也不会进入 Bootloader。" Foreground="{StaticResource MutedBrush}" TextAlignment="Center" TextWrapping="Wrap" LineHeight="22"/>
-                    <Button Content="连接并读取" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Center" Margin="0,16,0,0" Click="ReadDevice_Click"/>
-                    <TextBlock Text="支持 DOIO KB16-01 Rev2 / USB 303A:8360" Foreground="{StaticResource MutedBrush}" FontSize="11" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                    <TextBlock Text="Connect Your DOIO KB16" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,20,0,8"/>
+                    <TextBlock Text="Read the device to edit its four layers. Reading doesn't change the configuration or enter the bootloader." Foreground="{StaticResource MutedBrush}" TextAlignment="Center" TextWrapping="Wrap" LineHeight="22"/>
+                    <Button Content="Connect and Read" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Center" Margin="0,16,0,0" Click="ReadDevice_Click"/>
+                    <TextBlock Text="Supports DOIO KB16-01 Rev2 / USB 303A:8360" Foreground="{StaticResource MutedBrush}" FontSize="11" HorizontalAlignment="Center" Margin="0,16,0,0"/>
                 </StackPanel>
             </Border>
         </Grid>
@@ -309,12 +309,12 @@
             <Grid x:Name="DraftBarGrid" Margin="18,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock x:Name="DraftTitle" Text="等待读取设备" FontSize="14" FontWeight="Bold"/>
-                    <TextBlock x:Name="DraftSubtitle" Text="连接后会在这里显示未应用修改和设备快照" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0"/>
+                    <TextBlock x:Name="DraftTitle" Text="Waiting for Device" FontSize="14" FontWeight="Bold"/>
+                    <TextBlock x:Name="DraftSubtitle" Text="Pending changes and the device snapshot will appear here" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0"/>
                 </StackPanel>
                 <TextBlock x:Name="SnapshotText" Grid.Column="1" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource MutedBrush}" FontSize="10" TextAlignment="Right" VerticalAlignment="Center" Margin="20,0"/>
-                <Button x:Name="RevertButton" Grid.Column="2" Content="撤销修改" Style="{StaticResource SoftButtonStyle}" Click="Revert_Click" IsEnabled="False"/>
-                <Button x:Name="ApplyButton" Grid.Column="3" Content="应用到设备" Style="{StaticResource PrimaryButtonStyle}" Click="Apply_Click" IsEnabled="False"/>
+                <Button x:Name="RevertButton" Grid.Column="2" Content="Revert Changes" Style="{StaticResource SoftButtonStyle}" Click="Revert_Click" IsEnabled="False"/>
+                <Button x:Name="ApplyButton" Grid.Column="3" Content="Apply to Device" Style="{StaticResource PrimaryButtonStyle}" Click="Apply_Click" IsEnabled="False"/>
             </Grid>
         </Border>
     </Grid>

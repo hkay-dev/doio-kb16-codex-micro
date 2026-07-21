@@ -1,8 +1,12 @@
 #include QMK_KEYBOARD_H
 
 #include "oled_icons.h"
+#include "codex_micro_menu.h"
+#include "codex_micro_protocol.h"
+#include "codex_micro_settings.h"
 
 #include <string.h>
+#include <stdio.h>
 
 #define OLED_ICON_BYTES 512
 #define OLED_POPUP_COLS 21
@@ -154,6 +158,10 @@ static uint16_t popup_duration;
 static bool popup_active;
 static bool display_dirty = true;
 static uint8_t rendered_layer = 0xff;
+static bool menu_was_rendered;
+static bool dashboard_was_rendered;
+static char rendered_menu_lines[3][22];
+static char rendered_dashboard_lines[3][22];
 
 static void copy_popup_line(char *target, const char *source) {
     strncpy(target, source, OLED_POPUP_COLS);
@@ -181,6 +189,22 @@ static const char *icon_for_layer(uint8_t layer) {
 void oled_controller_render(void) {
     uint8_t active_layer = get_highest_layer(layer_state);
 
+    if (codex_micro_menu_active()) {
+        char lines[4][22] = {{0}};
+        codex_micro_menu_lines(lines);
+        if (display_dirty || !menu_was_rendered || memcmp(rendered_menu_lines, lines, sizeof(rendered_menu_lines)) != 0) {
+            oled_clear();
+            oled_set_cursor(0, 1);
+            for (uint8_t row = 0; row < 3; ++row) oled_write_ln(lines[row], false);
+            memcpy(rendered_menu_lines, lines, sizeof(rendered_menu_lines));
+            display_dirty = false;
+        }
+        menu_was_rendered = true;
+        dashboard_was_rendered = false;
+        return;
+    }
+    menu_was_rendered = false;
+
     if (popup_active && timer_elapsed(popup_timer) >= popup_duration) {
         popup_active = false;
         display_dirty = true;
@@ -196,6 +220,35 @@ void oled_controller_render(void) {
         }
         return;
     }
+
+    if (active_layer == 0 && (codex_micro_settings_get()->flags & CODEX_MICRO_SETTING_DASHBOARD) != 0) {
+        char lines[3][22] = {{0}};
+        int8_t selected = codex_micro_selected_slot();
+        const char *alert = codex_micro_alert_label();
+        uint8_t slot = codex_micro_alert_slot();
+        if (!codex_micro_host_connected()) snprintf(lines[0], sizeof(lines[0]), "NO LINK");
+        else if (strcmp(alert, "READY") == 0 && selected >= 0) snprintf(lines[0], sizeof(lines[0]), "USB S%u READY", (uint8_t)selected + 1U);
+        else if (strcmp(alert, "READY") == 0) snprintf(lines[0], sizeof(lines[0]), "USB READY");
+        else if (strcmp(alert, "RECONNECTED") == 0) snprintf(lines[0], sizeof(lines[0]), "USB CONNECTED");
+        else if (slot < 6) {
+            const char *short_alert = strcmp(alert, "COMPLETE") == 0 ? "DONE" : strcmp(alert, "NEEDS INPUT") == 0 ? "INPUT" : strcmp(alert, "REMINDER") == 0 ? "REMIND" : alert;
+            snprintf(lines[0], sizeof(lines[0]), "USB %s A%u", short_alert, slot + 1U);
+        } else snprintf(lines[0], sizeof(lines[0]), "USB %s", alert);
+        snprintf(lines[1], sizeof(lines[1]), "1:%c  2:%c  3:%c", codex_micro_slot_mark(0), codex_micro_slot_mark(1), codex_micro_slot_mark(2));
+        snprintf(lines[2], sizeof(lines[2]), "4:%c  5:%c  6:%c", codex_micro_slot_mark(3), codex_micro_slot_mark(4), codex_micro_slot_mark(5));
+
+        if (display_dirty || !dashboard_was_rendered || rendered_layer != active_layer || memcmp(rendered_dashboard_lines, lines, sizeof(lines)) != 0) {
+            oled_clear();
+            oled_set_cursor(0, 1);
+            for (uint8_t row = 0; row < 3; ++row) oled_write_ln(lines[row], false);
+            memcpy(rendered_dashboard_lines, lines, sizeof(lines));
+            rendered_layer = active_layer;
+            display_dirty = false;
+        }
+        dashboard_was_rendered = true;
+        return;
+    }
+    dashboard_was_rendered = false;
 
     if (display_dirty || rendered_layer != active_layer) {
         oled_clear();
