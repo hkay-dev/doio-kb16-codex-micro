@@ -26,7 +26,7 @@ public static class DeviceErrorPresenter
     public static DeviceErrorPresentation Create(Exception exception, DeviceOperation operation) => exception switch
     {
         DeviceStateChangedException => new("设备配置已变化", exception.Message, false),
-        ConfigurationVerificationException => new("校验失败", exception.Message, true),
+        ConfigurationVerificationException => new("校验失败", exception.Message, false),
         DeviceProtocolException { StatusCode: 7 } => new("设备正忙", "设备检测到仍有按键或旋钮按住。请全部松开后重试；当前草稿未写入。", false),
         DeviceProtocolException { StatusCode: 8 } => new("写入失败", exception.Message, false),
         DeviceProtocolException => new(operation == DeviceOperation.Write ? "写入失败" : "设备拒绝操作", exception.Message, false),

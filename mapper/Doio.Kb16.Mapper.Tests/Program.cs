@@ -66,8 +66,11 @@ var hello = ConfigProtocolClient.ParseHelloPayload(helloPayload);
 Check(hello.Generation == 2 && hello.Crc == 0xD82701A6u && hello.ConfigLength == 340, "16-byte hello capability response");
 var lighting = ConfigProtocolClient.ParseLightingPayload([1, 3, 170, 140, 120]);
 Check(lighting.Enabled && lighting.Mode == 3 && lighting.Hue == 170 && lighting.Saturation == 140 && lighting.Value == 120, "lighting response parsing");
-Check(LightingValueConverter.ByteToPercent(120) == 47, "brightness byte to percent");
-Check(LightingValueConverter.PercentToByte(47) == 120, "brightness percent to byte");
+Check(LightingValueConverter.ByteToPercent(120) == 47, "saturation byte to percent");
+Check(LightingValueConverter.PercentToByte(47) == 120, "saturation percent to byte");
+Check(LightingValueConverter.BrightnessByteToPercent(120) == 60, "brightness byte to percent");
+Check(LightingValueConverter.BrightnessPercentToByte(60) == 120, "brightness percent to byte");
+Check(LightingValueConverter.BrightnessPercentToByte(100) == 200, "brightness maximum matches QMK limit");
 Check(LightingValueConverter.HueByteToDegrees(170) == 239, "hue byte to degrees");
 Check(LightingValueConverter.DegreesToHueByte(239) == 170, "hue degrees to byte");
 try
@@ -224,7 +227,7 @@ Check(stalePresentation.Title == "设备配置已变化" && !stalePresentation.D
 var busyPresentation = DeviceErrorPresenter.Create(new DeviceProtocolException(5, 7, "仍有按键按住"), DeviceOperation.Write);
 Check(busyPresentation.Title == "设备正忙" && !busyPresentation.Disconnect, "busy presentation");
 var verificationPresentation = DeviceErrorPresenter.Create(new ConfigurationVerificationException("回读不一致"), DeviceOperation.Write);
-Check(verificationPresentation.Title == "校验失败" && verificationPresentation.Disconnect, "verification presentation");
+Check(verificationPresentation.Title == "校验失败" && !verificationPresentation.Disconnect, "verification stays retryable");
 var conflictPresentation = DeviceErrorPresenter.Create(new DeviceConnectionException("被占用", true), DeviceOperation.Read);
 Check(conflictPresentation.Title == "设备连接失败" && conflictPresentation.Disconnect, "HID conflict presentation");
 
@@ -258,6 +261,9 @@ var wpfThread = new Thread(() =>
         Check(smokeWindow.LightingPopupUsesCustomPlacementForTesting, "lighting custom popup placement");
         Check(smokeWindow.LightingTabNavigationForTesting == KeyboardNavigationMode.Cycle, "lighting tab cycle");
         Check(smokeWindow.LightingSurfaceForTesting.Stroke is null && !smokeWindow.HasLegacyLightingFocusForTesting, "lighting indicator has no outline");
+        Check(!smokeWindow.LightingSliderHasOuterFocusForTesting, "lighting slider has no outer focus frame");
+        Check(smokeWindow.DeviceStageCornerRadiusForTesting.BottomLeft == 10 && smokeWindow.DeviceStageCornerRadiusForTesting.BottomRight == 10, "device stage bottom corners");
+        Check(smokeWindow.EditorFooterCornerRadiusForTesting.BottomLeft == 10 && smokeWindow.EditorFooterCornerRadiusForTesting.BottomRight == 10, "editor footer bottom corners");
         smokeWindow.ShowLightingErrorForTesting();
         Check(smokeWindow.LightingErrorVisibleForTesting, "lighting inline error state");
         smokeWindow.SetLightingStateForTesting(new LightingState(false, 1, 170, 140, 0));
@@ -276,7 +282,7 @@ var wpfThread = new Thread(() =>
             RenderWindow(smokeWindow, Path.Combine(renderDirectory, "mapper-main-1180x760-150dpi.png"), 144);
             RenderWindow(smokeWindow, Path.Combine(renderDirectory, "mapper-main-1180x760-200dpi.png"), 192);
             smokeWindow.PrepareLightingPanelForTesting();
-            RenderElement(smokeWindow.LightingPanelForTesting, Path.Combine(renderDirectory, "mapper-lighting-panel.png"));
+            RenderElement(smokeWindow.LightingPopupChromeForTesting, Path.Combine(renderDirectory, "mapper-lighting-panel.png"));
         }
         smokeWindow.Close();
 

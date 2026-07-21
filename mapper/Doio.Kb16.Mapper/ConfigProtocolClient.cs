@@ -163,7 +163,8 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
         await SendLightingCommandAsync(9, [hue, saturation, value], cancellationToken);
         var current = await ReadLightingAsync(cancellationToken);
         if (!current.Enabled || current.Mode != SolidColorMode || current.Hue != hue || current.Saturation != saturation || current.Value != value)
-            throw new ConfigurationVerificationException("保存后的灯光参数回读不一致。");
+            throw new ConfigurationVerificationException(
+                $"保存后的灯光参数回读不一致。期望 H/S/V {hue}/{saturation}/{value}，设备返回 {current.Hue}/{current.Saturation}/{current.Value}。");
         return current;
     }
 

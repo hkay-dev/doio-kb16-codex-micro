@@ -113,11 +113,12 @@
         <Style x:Key="LightingSliderStyle" TargetType="Slider">
             <Setter Property="Height" Value="30"/>
             <Setter Property="IsMoveToPointEnabled" Value="True"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid>
-                            <Border Height="9" CornerRadius="5" Background="{TemplateBinding Background}" VerticalAlignment="Center">
+                            <Border x:Name="TrackSurface" Height="9" CornerRadius="5" Background="{TemplateBinding Background}" VerticalAlignment="Center" Opacity="0.94">
                                 <Border.Effect><DropShadowEffect BlurRadius="7" ShadowDepth="1" Direction="135" Color="#B9AA96" Opacity="0.22"/></Border.Effect>
                             </Border>
                             <Track x:Name="PART_Track">
@@ -125,10 +126,9 @@
                                 <Track.Thumb><Thumb Style="{StaticResource LightingThumbStyle}"/></Track.Thumb>
                                 <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource LightingTrackButtonStyle}" Command="Slider.IncreaseLarge"/></Track.IncreaseRepeatButton>
                             </Track>
-                            <Border x:Name="SliderFocus" CornerRadius="8" BorderBrush="{StaticResource FocusBrush}" BorderThickness="3" Margin="-2" Visibility="Collapsed" IsHitTestVisible="False"/>
                         </Grid>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="SliderFocus" Property="Visibility" Value="Visible"/></Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="TrackSurface" Property="Opacity" Value="1"/></Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

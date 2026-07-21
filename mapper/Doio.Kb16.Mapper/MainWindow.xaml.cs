@@ -53,6 +53,7 @@ public partial class MainWindow : Window
     internal bool IsCompactForTesting => _compact;
     internal bool IsConnectedPreviewVisible => ConnectedWorkspace.Visibility == Visibility.Visible;
     internal FrameworkElement LightingPanelForTesting => LightingPanel;
+    internal FrameworkElement LightingPopupChromeForTesting => LightingPopupChrome;
     internal string LightingToolTipForTesting => LightingButton.ToolTip?.ToString() ?? string.Empty;
     internal bool LightingErrorVisibleForTesting => LightingError.Visibility == Visibility.Visible;
     internal bool LightingPopupIsOpenForTesting => LightingPopup.IsOpen;
@@ -74,6 +75,16 @@ public partial class MainWindow : Window
             return LightingButton.Template.FindName("LightingFocus", LightingButton) is not null;
         }
     }
+    internal bool LightingSliderHasOuterFocusForTesting
+    {
+        get
+        {
+            BrightnessSlider.ApplyTemplate();
+            return BrightnessSlider.Template.FindName("SliderFocus", BrightnessSlider) is not null;
+        }
+    }
+    internal CornerRadius DeviceStageCornerRadiusForTesting => DeviceStage.CornerRadius;
+    internal CornerRadius EditorFooterCornerRadiusForTesting => EditorFooterSurface.CornerRadius;
 
     internal void SetLightingStateForTesting(LightingState state) => SetLightingIndicator(state);
     internal void ShowLightingErrorForTesting() => ShowLightingError("设备正忙", "请松开按键后重试。");
@@ -82,9 +93,9 @@ public partial class MainWindow : Window
     internal void PrepareLightingPanelForTesting()
     {
         SetLightingSliders(new LightingState(true, 1, 170, 140, 120));
-        LightingPanel.Measure(new Size(326, double.PositiveInfinity));
-        LightingPanel.Arrange(new Rect(LightingPanel.DesiredSize));
-        LightingPanel.UpdateLayout();
+        LightingPopupChrome.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        LightingPopupChrome.Arrange(new Rect(LightingPopupChrome.DesiredSize));
+        LightingPopupChrome.UpdateLayout();
     }
 
     internal void LoadVisualPreview(VisualPreviewKind kind)
@@ -346,7 +357,7 @@ public partial class MainWindow : Window
         _updatingLighting = true;
         try
         {
-            BrightnessSlider.Value = LightingValueConverter.ByteToPercent(state.Value);
+            BrightnessSlider.Value = LightingValueConverter.BrightnessByteToPercent(state.Value);
             HueSlider.Value = LightingValueConverter.HueByteToDegrees(state.Hue);
             SaturationSlider.Value = LightingValueConverter.ByteToPercent(state.Saturation);
             UpdateLightingVisuals();
@@ -453,7 +464,7 @@ public partial class MainWindow : Window
     }
 
     private (byte Hue, byte Saturation, byte Value) CurrentLightingValues() =>
-        (LightingValueConverter.DegreesToHueByte(HueSlider.Value), LightingValueConverter.PercentToByte(SaturationSlider.Value), LightingValueConverter.PercentToByte(BrightnessSlider.Value));
+        (LightingValueConverter.DegreesToHueByte(HueSlider.Value), LightingValueConverter.PercentToByte(SaturationSlider.Value), LightingValueConverter.BrightnessPercentToByte(BrightnessSlider.Value));
 
     private void UpdateLightingVisuals()
     {
@@ -481,7 +492,7 @@ public partial class MainWindow : Window
         LightingIndicator.Fill = new SolidColorBrush(color);
         SetLightingToolTip(!state.Enabled || state.Value == 0
             ? "普通层灯光 · 已关闭"
-            : BuildLightingToolTip(LightingValueConverter.HueByteToDegrees(state.Hue), LightingValueConverter.ByteToPercent(state.Saturation), LightingValueConverter.ByteToPercent(state.Value)));
+            : BuildLightingToolTip(LightingValueConverter.HueByteToDegrees(state.Hue), LightingValueConverter.ByteToPercent(state.Saturation), LightingValueConverter.BrightnessByteToPercent(state.Value)));
     }
 
     private void ResetLightingIndicator(string tooltip = "普通层灯光 · 设备未连接")
@@ -532,11 +543,15 @@ public partial class MainWindow : Window
             : "灯光连接已中断，请重新读取设备后重试。");
     }
 
-    private CustomPopupPlacement[] LightingPopup_Placement(Size popupSize, Size targetSize, Point offset) =>
-    [
-        new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, targetSize.Height + 2), PopupPrimaryAxis.Horizontal),
-        new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, -popupSize.Height - 2), PopupPrimaryAxis.Horizontal),
-    ];
+    private CustomPopupPlacement[] LightingPopup_Placement(Size popupSize, Size targetSize, Point offset)
+    {
+        const double shadowMargin = 20;
+        return
+        [
+            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width + shadowMargin, targetSize.Height + 2 - shadowMargin), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width + shadowMargin, -popupSize.Height + shadowMargin - 2), PopupPrimaryAxis.Horizontal),
+        ];
+    }
 
     private void LightingPanel_PreviewKeyDown(object sender, KeyEventArgs e)
     {

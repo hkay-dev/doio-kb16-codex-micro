@@ -118,10 +118,11 @@
                AllowsTransparency="True" PopupAnimation="Fade" Placement="Custom"
                CustomPopupPlacementCallback="LightingPopup_Placement"
                StaysOpen="False" Closed="LightingPopup_Closed">
-            <Border x:Name="LightingPanel" Width="326" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="18,16,18,14"
+            <Border x:Name="LightingPopupChrome" Padding="20" Background="Transparent">
+                <Border x:Name="LightingPanel" Width="326" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="18,16,18,14"
                     KeyboardNavigation.TabNavigation="Cycle" PreviewKeyDown="LightingPanel_PreviewKeyDown">
-                <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="3" Direction="315" Color="#B1A18C" Opacity="0.34"/></Border.Effect>
-                <Grid>
+                    <Border.Effect><DropShadowEffect BlurRadius="28" ShadowDepth="4" Direction="315" Color="#A69783" Opacity="0.32"/></Border.Effect>
+                    <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
@@ -175,7 +176,8 @@
                         <Button Grid.Column="1" Content="取消" Width="82" Style="{StaticResource SoftButtonStyle}" Click="CancelLighting_Click"/>
                         <Button x:Name="SaveLightingButton" Grid.Column="2" Content="保存灯光" Width="112" MinWidth="112" Style="{StaticResource PrimaryButtonStyle}" Click="SaveLighting_Click"/>
                     </Grid>
-                </Grid>
+                    </Grid>
+                </Border>
             </Border>
         </Popup>
 
@@ -198,7 +200,7 @@
                         </TabControl>
                         <TextBlock x:Name="LayerNote" Grid.Column="1" Text="CODEX 层  16 个按键  3 个旋钮" Foreground="{StaticResource MutedBrush}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
-                    <Border Grid.Row="1" x:Name="DeviceStage" Padding="18,14,18,12">
+                    <Border Grid.Row="1" x:Name="DeviceStage" Padding="18,14,18,12" CornerRadius="0,0,10,10">
                         <Border.Background>
                             <DrawingBrush TileMode="Tile" Viewport="0,0,20,20" ViewportUnits="Absolute">
                                 <DrawingBrush.Drawing>
@@ -266,16 +268,18 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <StackPanel x:Name="ModifierPanel" Grid.Row="3" Margin="12,8,12,10">
-                        <TextBlock Text="组合键修饰符" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
-                        <UniformGrid Columns="4" Margin="0,4,0,0">
-                            <CheckBox x:Name="CtrlBox" Content="Ctrl" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
-                            <CheckBox x:Name="ShiftBox" Content="Shift" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
-                            <CheckBox x:Name="AltBox" Content="Alt" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
-                            <CheckBox x:Name="WinBox" Content="Win" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
-                        </UniformGrid>
-                        <TextBlock x:Name="EditorHint" Foreground="{StaticResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="3,4,3,0"/>
-                    </StackPanel>
+                    <Border x:Name="EditorFooterSurface" Grid.Row="3" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,10,10">
+                        <StackPanel x:Name="ModifierPanel" Margin="12,8,12,10">
+                            <TextBlock Text="组合键修饰符" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
+                            <UniformGrid Columns="4" Margin="0,4,0,0">
+                                <CheckBox x:Name="CtrlBox" Content="Ctrl" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
+                                <CheckBox x:Name="ShiftBox" Content="Shift" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
+                                <CheckBox x:Name="AltBox" Content="Alt" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
+                                <CheckBox x:Name="WinBox" Content="Win" Style="{StaticResource ModifierStyle}" Checked="Modifier_Changed" Unchecked="Modifier_Changed"/>
+                            </UniformGrid>
+                            <TextBlock x:Name="EditorHint" Foreground="{StaticResource MutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="3,4,3,0"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>
