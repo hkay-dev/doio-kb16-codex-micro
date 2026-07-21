@@ -116,6 +116,17 @@ var restoreB = restoreSession.RestoreAsync();
 var restored = await Task.WhenAll(restoreA, restoreB);
 Check(restoreTransport.RestoreCount == 1 && restored.Any(item => item == restoreOriginal), "lighting restore deduplicated");
 
+var retryRestoreTransport = new FakeLightingTransport { RestoreFailuresRemaining = 1 };
+var retryRestoreSession = new LightingSessionCoordinator(retryRestoreTransport);
+await retryRestoreSession.BeginAsync();
+try
+{
+    await retryRestoreSession.RestoreAsync();
+    throw new InvalidOperationException("lighting restore failure accepted");
+}
+catch (IOException) { }
+Check(await retryRestoreSession.RestoreAsync() is not null && retryRestoreTransport.RestoreCount == 2, "lighting restore retry");
+
 var commitTransport = new FakeLightingTransport();
 var commitSession = new LightingSessionCoordinator(commitTransport);
 await commitSession.BeginAsync();
@@ -364,6 +375,7 @@ sealed class FakeLightingTransport : ILightingTransport
     public Exception? ReadException { get; init; }
     public Exception? CommitException { get; init; }
     public int PreviewFailuresRemaining { get; set; }
+    public int RestoreFailuresRemaining { get; set; }
     public List<LightingValues> PreviewCalls { get; } = [];
     public int MaxConcurrentPreviews { get; private set; }
     public int RestoreCount { get; private set; }
@@ -413,6 +425,11 @@ sealed class FakeLightingTransport : ILightingTransport
     public Task RestoreLightingAsync(LightingState state, CancellationToken cancellationToken = default)
     {
         RestoreCount++;
+        if (RestoreFailuresRemaining > 0)
+        {
+            RestoreFailuresRemaining--;
+            return Task.FromException(new IOException("Simulated restore failure"));
+        }
         Current = state;
         return Task.CompletedTask;
     }

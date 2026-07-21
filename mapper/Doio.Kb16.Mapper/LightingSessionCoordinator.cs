@@ -132,11 +132,20 @@ internal sealed class LightingSessionCoordinator(ILightingTransport transport)
 
     private async Task<LightingState?> RestoreCoreAsync(LightingState original, CancellationToken cancellationToken)
     {
-        DiscardPendingPreview();
-        await IgnorePreviewFailureAsync();
-        await transport.RestoreLightingAsync(original, cancellationToken);
-        lock (_sync) _original = null;
-        return original;
+        await Task.Yield();
+        try
+        {
+            DiscardPendingPreview();
+            await IgnorePreviewFailureAsync();
+            await transport.RestoreLightingAsync(original, cancellationToken);
+            lock (_sync) _original = null;
+            return original;
+        }
+        catch
+        {
+            lock (_sync) _restoreTask = null;
+            throw;
+        }
     }
 
     private async Task IgnorePreviewFailureAsync()
