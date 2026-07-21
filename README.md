@@ -1,6 +1,6 @@
 # DOIO KB16 Codex Micro
 
-将 DOIO KB16 Rev2 作为 Codex Micro 控制器使用的 QMK 固件与 Windows WPF Mapper。
+将 DOIO KB16 Rev2 （DOIO 16 有线版）作为 Codex Micro 控制器使用的 QMK 固件与 Windows WPF Mapper。
 
 > 非官方项目。请只在 `DOIO KB16-01 Rev2 / APM32F103CBT6` 上使用，并在刷写前确认 Bootloader、固件文件名和 SHA-256。
 
@@ -18,18 +18,9 @@ Mapper 当前版本为 `1.3.5.0`。数字、导航、系统三层共用普通灯
 - `doio_kb16_rev2_codex_micro_configurable_v1_3_5_status_colors.bin`
 - `Doio.Kb16.Mapper-v1.3.5-preview-complete.zip`
 
-Mapper 是 Windows x64 便携程序。解压完整 ZIP 后运行 `Doio.Kb16.Mapper.exe`；不要只复制 EXE，WPF 自包含发布仍需要随包的五个 native DLL。
+Mapper 是 Windows x64 便携程序。解压完整 ZIP 后运行 `Doio.Kb16.Mapper.exe`；
 
 完整步骤见 [docs/usage.md](docs/usage.md)，v1.3.5 发布说明见 [docs/release-v1.3.5.md](docs/release-v1.3.5.md)。
-
-## 仓库结构
-
-- `firmware/keymaps/`：可复制到 QMK 的两个保留 keymap。
-- `firmware/qmk-core-patches/`：Raw HID 描述符与 WS2812 PWM/DMA 必要补丁。
-- `firmware/releases/`：已验证固件二进制。
-- `mapper/Doio.Kb16.Mapper/`、`mapper/Doio.Kb16.Mapper.Tests/`：Mapper 源码与测试。
-- `docs/`：协议调查、验证记录及交接文档。
-- `local-releases/`：本机保留的最近两版便携程序；因单文件超过 100 MB，不进入 Git 历史。
 
 ## 硬件与兼容性
 
@@ -42,26 +33,6 @@ Mapper 是 Windows x64 便携程序。解压完整 ZIP 后运行 `Doio.Kb16.Mapp
 
 这些协议标识来自兼容性调查，并非公开稳定接口。ChatGPT Desktop 后续版本可能改变行为。
 
-## 构建
-
-把 `firmware/qmk-core-patches/` 中的文件按相同相对路径复制到 QMK 工作树，并把目标 keymap 复制到：
-
-```text
-keyboards/doio/kb16/keymaps/
-```
-
-构建当前固件：
-
-```sh
-make doio/kb16/rev2:codex_micro_configurable_v1_3 EXTRAFLAGS="-Werror"
-```
-
-运行 Mapper 测试：
-
-```powershell
-dotnet restore mapper/Doio.Kb16.Mapper.Tests/Doio.Kb16.Mapper.Tests.csproj --locked-mode
-dotnet run --project mapper/Doio.Kb16.Mapper.Tests/Doio.Kb16.Mapper.Tests.csproj -c Release --no-restore
-```
 
 ## 安全说明
 
