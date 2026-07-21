@@ -69,6 +69,14 @@ int main(void) {
     invalid.alert_layout = CODEX_MICRO_ALERT_LAYOUT_COUNT;
     assert(!codex_micro_settings_save(&invalid));
 
+    codex_micro_settings_t unsaved = changed;
+    unsaved.brightness_percent = 45;
+    kb16_config_host_fail_writes(true);
+    assert(!codex_micro_settings_save(&unsaved));
+    assert(codex_micro_settings_get()->brightness_percent == changed.brightness_percent);
+    assert(codex_micro_settings_host_write_count() == 2);
+    kb16_config_host_fail_writes(false);
+
     codex_micro_settings_host_corrupt(4);
     codex_micro_settings_init();
     assert_defaults(codex_micro_settings_get());

@@ -4,15 +4,19 @@
 
 #ifdef CODEX_MICRO_HOST_TEST
 static uint8_t host_eeprom[KB16_USER_STORAGE_SIZE];
+static bool host_writes_fail;
 void kb16_user_storage_read(void *target, uint32_t offset, uint32_t length) {
     memcpy(target, host_eeprom + offset, length);
 }
 void kb16_user_storage_write(const void *source, uint32_t offset, uint32_t length) {
+    if (host_writes_fail) return;
     memcpy(host_eeprom + offset, source, length);
 }
 void kb16_config_host_clear_storage(void) {
     memset(host_eeprom, 0, sizeof(host_eeprom));
+    host_writes_fail = false;
 }
+void kb16_config_host_fail_writes(bool fail) { host_writes_fail = fail; }
 void kb16_config_host_corrupt_slot(uint8_t slot, uint16_t offset) {
     if (slot < 2 && offset < KB16_CONFIG_SLOT_SIZE) {
         host_eeprom[(uint16_t)slot * KB16_CONFIG_SLOT_SIZE + offset] ^= 0x5AU;

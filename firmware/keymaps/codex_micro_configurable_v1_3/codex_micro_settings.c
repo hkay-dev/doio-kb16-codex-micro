@@ -135,9 +135,15 @@ bool codex_micro_settings_save(const codex_micro_settings_t *settings) {
     if (!codex_micro_settings_validate(settings)) {
         return false;
     }
-    active_settings = *settings;
     codex_micro_settings_record_t record = encode_record(settings);
     kb16_user_storage_write(&record, CODEX_MICRO_SETTINGS_OFFSET, sizeof(record));
+    codex_micro_settings_record_t verify;
+    codex_micro_settings_t        decoded;
+    kb16_user_storage_read(&verify, CODEX_MICRO_SETTINGS_OFFSET, sizeof(verify));
+    if (memcmp(&verify, &record, sizeof(record)) != 0 || !decode_record(&verify, &decoded)) {
+        return false;
+    }
+    active_settings = decoded;
 #ifdef CODEX_MICRO_HOST_TEST
     ++host_write_count;
 #endif

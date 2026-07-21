@@ -129,6 +129,7 @@ void kb16_user_storage_write(const void *source, uint32_t offset, uint32_t lengt
 
 #ifdef CODEX_MICRO_HOST_TEST
 void kb16_config_host_clear_storage(void);
+void kb16_config_host_fail_writes(bool fail);
 void kb16_config_host_corrupt_slot(uint8_t slot, uint16_t offset);
 void kb16_config_host_copy_storage(void *target, uint32_t offset, uint32_t length);
 #endif
