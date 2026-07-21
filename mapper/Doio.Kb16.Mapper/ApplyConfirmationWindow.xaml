@@ -1,0 +1,55 @@
+<Window x:Class="Doio.Kb16.Mapper.ApplyConfirmationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="确认应用配置" Width="540" SizeToContent="Height" MaxHeight="620"
+        Icon="Assets/Doio.Kb16.Mapper.png" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12">
+        <Border.Effect><DropShadowEffect BlurRadius="34" ShadowDepth="7" Direction="270" Color="#B3A18C" Opacity="0.30"/></Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid Margin="20,20,20,8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="50"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Border Width="36" Height="36" CornerRadius="18" Background="{StaticResource AccentBrush}" VerticalAlignment="Top" HorizontalAlignment="Left">
+                    <TextBlock x:Name="CountBadge" Text="1" Foreground="{StaticResource AccentInkBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel Grid.Column="1">
+                    <TextBlock x:Name="DialogTitle" Text="确认应用修改" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock x:Name="SummaryText" Margin="0,6,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" LineHeight="18"/>
+                </StackPanel>
+            </Grid>
+            <Border Grid.Row="1" Margin="20,12" Padding="14,10" CornerRadius="8" Background="{StaticResource ControlBrush}">
+                <StackPanel>
+                    <ItemsControl x:Name="ChangeList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,4">
+                                    <TextBlock Text="{Binding Location}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="{Binding OldValue}" Foreground="{StaticResource MutedBrush}"/>
+                                        <TextBlock Text="→" Foreground="{StaticResource MutedBrush}" Margin="9,0"/>
+                                        <TextBlock Text="{Binding NewValue}" Foreground="#8D3B0B" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="RemainingText" Margin="0,6,0,0" Foreground="{StaticResource MutedBrush}" Visibility="Collapsed"/>
+                </StackPanel>
+            </Border>
+            <StackPanel Grid.Row="2" Margin="20,4,20,16">
+                <Border BorderBrush="{StaticResource SuccessBrush}" BorderThickness="3,0,0,0" Padding="12,0,0,0">
+                    <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" LineHeight="18"
+                               Text="写入前会重新读取设备并核对 Generation、CRC 和完整配置；写入后立即回读校验。若设备状态已变化，本次应用会被阻止，当前草稿不会丢失。"/>
+                </Border>
+                <TextBlock x:Name="DiagnosticText" Foreground="{StaticResource MutedBrush}" FontFamily="{StaticResource MonoFont}" FontSize="10" Margin="15,10,0,0"/>
+            </StackPanel>
+            <Border Grid.Row="3" Background="{StaticResource ControlBrush}" Padding="14,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="取消" Width="104" Style="{StaticResource SoftButtonStyle}" IsCancel="True"/>
+                    <Button Content="应用配置" Width="154" Style="{StaticResource PrimaryButtonStyle}" IsDefault="True" Click="Apply_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
