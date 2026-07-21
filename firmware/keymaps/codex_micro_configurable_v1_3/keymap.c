@@ -48,6 +48,7 @@ enum custom_keycodes {
 typedef struct {
     bool     pressed;
     bool     fired;
+    uint8_t  press_count;
     uint16_t pressed_at;
     uint8_t  display_stage;
 } guarded_action_t;
@@ -84,6 +85,9 @@ static void cycle_layer(void) {
 }
 
 static void start_guarded_action(guarded_action_t *action, const char *label) {
+    if (action->press_count++ > 0) {
+        return;
+    }
     action->pressed = true;
     action->fired = false;
     action->pressed_at = timer_read();
@@ -92,6 +96,9 @@ static void start_guarded_action(guarded_action_t *action, const char *label) {
 }
 
 static void cancel_guarded_action(guarded_action_t *action, const char *label) {
+    if (action->press_count == 0 || --action->press_count > 0) {
+        return;
+    }
     action->pressed = false;
     if (!action->fired) {
         oled_controller_show_popup(label, "CANCEL", OLED_POPUP_NORMAL_MS);
