@@ -647,7 +647,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            var action = DraftEditing.WithModifiers(option.Action, CtrlBox.IsChecked == true, ShiftBox.IsChecked == true, AltBox.IsChecked == true, WinBox.IsChecked == true);
+            var current = GetSelectedAction();
+            var action = DraftEditing.WithModifiers(option.Action, current.Modifiers, CtrlBox.IsChecked == true, ShiftBox.IsChecked == true, AltBox.IsChecked == true, WinBox.IsChecked == true);
             SetSelectedAction(action);
             SetModifierEnabled(action.Kind == ActionKind.Keyboard);
         }
@@ -714,10 +715,10 @@ public partial class MainWindow : Window
 
     private void SetModifierChecks(ActionDescriptor action)
     {
-        CtrlBox.IsChecked = (action.Modifiers & 0x01) != 0;
-        ShiftBox.IsChecked = (action.Modifiers & 0x02) != 0;
-        AltBox.IsChecked = (action.Modifiers & 0x04) != 0;
-        WinBox.IsChecked = (action.Modifiers & 0x08) != 0;
+        CtrlBox.IsChecked = (action.Modifiers & 0x11) != 0;
+        ShiftBox.IsChecked = (action.Modifiers & 0x22) != 0;
+        AltBox.IsChecked = (action.Modifiers & 0x44) != 0;
+        WinBox.IsChecked = (action.Modifiers & 0x88) != 0;
         SetModifierEnabled(action.Kind == ActionKind.Keyboard);
     }
 

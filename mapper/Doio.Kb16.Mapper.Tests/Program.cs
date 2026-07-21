@@ -50,6 +50,10 @@ Check(editingDraft.NativeKeys[0] == NativeControl.AG01 && editingDraft.NativeKey
 Check(editingBaseline.NativeKeys[0] == NativeControl.AG00, "native swap preserves loaded baseline");
 var modifiedAction = DraftEditing.WithModifiers(new ActionDescriptor { Kind = ActionKind.Keyboard, Code = 0x04 }, true, false, true, false);
 Check(modifiedAction.Modifiers == 0x05 && modifiedAction.Code == 0x04, "immediate modifier update");
+var rightModifiers = DraftEditing.WithModifiers(new ActionDescriptor { Kind = ActionKind.Keyboard, Modifiers = 0xA0, Code = 0x04 }, true, true, false, false);
+Check(rightModifiers.Modifiers == 0x21, "right-side modifiers survive checkbox edits");
+var changedRightAction = DraftEditing.WithModifiers(new ActionDescriptor { Kind = ActionKind.Keyboard, Code = 0x05 }, 0x90, true, false, false, true);
+Check(changedRightAction.Modifiers == 0x90 && changedRightAction.Code == 0x05, "right-side modifiers survive action changes");
 var nonKeyboardAction = DraftEditing.WithModifiers(new ActionDescriptor { Kind = ActionKind.Consumer, Code = 1 }, true, true, true, true);
 Check(nonKeyboardAction.Modifiers == 0, "non-keyboard modifiers cleared");
 Check(AppIdentity.ApplicationUserModelId == "Doio.Kb16.CodexMapper", "stable AppUserModelID");
