@@ -12,7 +12,7 @@ jobs:
       run:
         working-directory: firmware/keymaps/codex_micro_configurable_v1_3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Protocol tests
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -DCODEX_MICRO_HOST_TEST -Itools -I. \
@@ -46,8 +46,8 @@ jobs:
   mapper-tests:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - name: Restore Mapper dependencies
