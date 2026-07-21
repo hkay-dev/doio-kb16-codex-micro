@@ -308,13 +308,13 @@ static bool parse_brightness(const char *value, uint8_t *result) {
         return false;
     }
 
-    uint32_t whole = 0;
+    bool whole_nonzero = false;
     while (*value >= '0' && *value <= '9') {
-        whole = whole * 10U + (uint32_t)(*value - '0');
+        if (*value != '0') whole_nonzero = true;
         ++value;
     }
 
-    if (whole >= 1U) {
+    if (whole_nonzero) {
         *result = 255;
         return true;
     }
