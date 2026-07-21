@@ -1,4 +1,8 @@
-#include QMK_KEYBOARD_H
+#ifdef CODEX_MICRO_HOST_TEST
+#    include "tools/test_qmk.h"
+#else
+#    include QMK_KEYBOARD_H
+#endif
 
 #include "oled_icons.h"
 #include "codex_micro_menu.h"
@@ -203,6 +207,7 @@ void oled_controller_render(void) {
         dashboard_was_rendered = false;
         return;
     }
+    if (menu_was_rendered) display_dirty = true;
     menu_was_rendered = false;
 
     if (popup_active && timer_elapsed(popup_timer) >= popup_duration) {

@@ -40,6 +40,11 @@ jobs:
           gcc -std=c11 -Wall -Wextra -Werror -DCODEX_MICRO_HOST_TEST -Itools -I. \
             kb16_config.c codex_micro_settings.c codex_micro_menu.c tools/menu_test.c -o tools/menu_test
           ./tools/menu_test
+      - name: OLED tests
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -DCODEX_MICRO_HOST_TEST -Itools -I. \
+            oled_icons.c tools/oled_test.c -o tools/oled_test
+          ./tools/oled_test
       - name: Static compatibility validation
         run: python3 tools/validate_keymap.py
 
