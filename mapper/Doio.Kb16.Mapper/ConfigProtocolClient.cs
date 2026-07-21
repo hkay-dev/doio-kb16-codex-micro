@@ -41,7 +41,7 @@ public sealed class ConfigProtocolClient : IAsyncDisposable
         }
         if (foundCompatibleDevice)
             throw new DeviceConnectionException("The Codex Micro configuration interface was found but couldn't be opened. Close any other configurator that may have claimed the HID interface, then try again.", true);
-        throw new DeviceConnectionException("No configurable 303A:8360 Codex Micro HID interface was found. Check that the device is connected and running the v1.3 firmware.");
+        throw new DeviceConnectionException("No configurable 303A:8360 Codex Micro HID interface was found. Check that the device is connected and running the configurable v1.3-or-newer firmware.");
     }
 
     public async Task<(uint Generation, uint Crc, ushort ConfigLength)> HelloAsync(CancellationToken cancellationToken = default)
