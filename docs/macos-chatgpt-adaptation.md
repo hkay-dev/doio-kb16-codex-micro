@@ -209,8 +209,8 @@ The OLED lighting build was flashed successfully on July 21, 2026.
 | Item | Value |
 |---|---|
 | Release BIN | `firmware/releases/v1.4.0/doio_kb16_rev2_codex_micro_oled_v1_4_0.bin` |
-| Size | `61280` bytes |
-| SHA-256 | `c1b64e1cca952c967dce677601d1c3b131df739df4d64a26236beb8adc888bf9` |
+| Size | `61716` bytes |
+| SHA-256 | `2eab380e04f1db015883b8a05f147e07b88266d2defe4df817fd2bcd7a4552e1` |
 
 The flash command is:
 
