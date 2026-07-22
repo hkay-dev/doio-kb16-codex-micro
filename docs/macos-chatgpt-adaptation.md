@@ -56,7 +56,7 @@ Work Louder documents six Agent key states. White means idle, blue means thinkin
 
 This KB16 build intentionally leaves Idle dark. Complete, needs-input and
 error states pulse smoothly in their own colors until you press the matching
-Agent key.
+Agent key or focus that task in ChatGPT.
 
 The inspected ChatGPT app has seven numbered effects for thread, key, and ambient lighting.
 
@@ -213,8 +213,8 @@ The OLED lighting build was flashed successfully on July 21, 2026.
 | Item | Value |
 |---|---|
 | Release BIN | `firmware/releases/v1.4.0/doio_kb16_rev2_codex_micro_oled_v1_4_0.bin` |
-| Size | `61688` bytes |
-| SHA-256 | `c3e68e3ef48a52a9a218daa855410bcfa62a8bc921e16f575337f62c43385da0` |
+| Size | `61720` bytes |
+| SHA-256 | `7321aeef382aff8b6da4a9a38862ef3a818ba7ed5da819a26acade7c2379f4ef` |
 
 The flash command is:
 

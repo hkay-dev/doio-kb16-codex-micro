@@ -81,8 +81,9 @@ lights on all day.
 | Unknown | Host color | `?` |
 
 Agent lighting follows the slot if you move an Agent control with the Mapper.
-It isn't tied to the six original LED positions. Pressing an Agent key marks
-that slot checked and turns off its outcome pulse.
+It isn't tied to the six original LED positions. Pressing an Agent key or
+focusing its task in ChatGPT marks that slot checked and turns off its outcome
+pulse.
 
 ### Full-board alerts that still show the source slot
 

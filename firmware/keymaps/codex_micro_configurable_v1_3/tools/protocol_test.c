@@ -462,8 +462,7 @@ int main(void) {
     assert(colors[4][0] > 0 && colors[5][0] > 0);
     codex_micro_send_agent_key(2, true);
     codex_micro_send_agent_key(2, false);
-    codex_micro_send_agent_key(3, true);
-    codex_micro_send_agent_key(3, false);
+    feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":3,\"e\":\"breath\"}],\"id\":431}");
     memset(colors, 0xAA, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
     assert(colors[4][0] == 0 && colors[4][1] == 0 && colors[4][2] == 0);

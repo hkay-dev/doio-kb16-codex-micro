@@ -71,9 +71,9 @@ Mapper remaps instead of assuming that Agent slots stay in their default keys.
 
 Ordinary Agent keys now stay dark for Idle and Empty. Working breathes a
 saturated electric blue at `005CFF`. Complete, Needs Input and Error smoothly
-pulse green, amber and red until their Agent key is pressed. Preview has a
-Status Demo that puts all six states on slots 1 through 6 at the same time,
-matching the OLED Slot Key.
+pulse green, amber and red until their Agent key is pressed or ChatGPT focuses
+that task. Preview has a Status Demo that puts all six states on slots 1
+through 6 at the same time, matching the OLED Slot Key.
 
 The extra preferences use a separate 16-byte CRC16 record at user-data offset
 712. The Mapper's two 356-byte slots and 340-byte payload stay byte-for-byte

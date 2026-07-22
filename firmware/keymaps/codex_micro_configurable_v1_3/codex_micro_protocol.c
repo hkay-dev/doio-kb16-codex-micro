@@ -576,6 +576,7 @@ static void update_thread_lighting(const char *params) {
                 codex_micro_slot_state_t current = normalize_slot(light);
                 slot_states[id] = current;
                 if (current != previous) slot_checked[id] = !slot_needs_check(current);
+                if (slot_needs_check(current) && light->effect == CODEX_MICRO_EFFECT_BREATH) slot_checked[id] = true;
                 if (current == CODEX_MICRO_SLOT_COMPLETE && previous != current) {
                     reminder_started_at[id] = now;
                     reminder_acknowledged[id] = false;

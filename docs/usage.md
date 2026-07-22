@@ -14,7 +14,7 @@ from Windows, grab the v1.3.5 Mapper package from the original project's
 Check their SHA-256 hashes:
 
 ```text
-C3E68E3EF48A52A9A218DAA855410BCFA62A8BC921E16F575337F62C43385DA0  doio_kb16_rev2_codex_micro_oled_v1_4_0.bin
+7321AEEF382AFF8B6DA4A9A38862EF3A818BA7ED5DA819A26ACADE7C2379F4EF  doio_kb16_rev2_codex_micro_oled_v1_4_0.bin
 65FB2D298D27C5533A1EA400D0CAAB46465BFDB4D0B9FA7ABCB5E8CEB68DBB89  Doio.Kb16.Mapper-v1.3.5-preview-complete.zip
 ```
 
