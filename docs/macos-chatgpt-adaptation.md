@@ -54,6 +54,10 @@ The Mac app also has an Input Monitoring permission check and a direct link to t
 
 Work Louder documents six Agent key states. White means idle, blue means thinking, green means complete, amber means the task needs input, red means error, and off means no task is assigned.
 
+This KB16 build intentionally leaves Idle dark. Complete, needs-input and
+error states pulse smoothly in their own colors until you press the matching
+Agent key.
+
 The inspected ChatGPT app has seven numbered effects for thread, key, and ambient lighting.
 
 | ID | Effect | KB16 rendering |
@@ -91,9 +95,9 @@ The physical board passed discovery, ChatGPT connection, Agent-key selection, lo
 
 1. Start a task and watch its assigned key breathe blue.
 2. Select that working task and watch a blue snake move across the acrylic glow.
-3. Finish the task and watch two full-board green pulses, followed by the steady green task key.
-4. Trigger a task that needs approval and check amber on its assigned key.
-5. Trigger an error and check red on its assigned key plus the app's global error animation.
+3. Finish the task and watch two full-board green pulses, followed by a green task-key pulse that stops when you press it.
+4. Trigger a task that needs approval and check that its amber pulse keeps running until you press its Agent key.
+5. Trigger an error and check that its red pulse keeps running until you press its Agent key.
 6. Hold push-to-talk and check the recording snake, processing snake, and completed white state.
 7. Keep several task states visible and make sure their separate key colors survive every global animation.
 8. Switch to Number, Navigation, or System during a completion alert and make sure the green pulse still appears.
@@ -209,8 +213,8 @@ The OLED lighting build was flashed successfully on July 21, 2026.
 | Item | Value |
 |---|---|
 | Release BIN | `firmware/releases/v1.4.0/doio_kb16_rev2_codex_micro_oled_v1_4_0.bin` |
-| Size | `61716` bytes |
-| SHA-256 | `2eab380e04f1db015883b8a05f147e07b88266d2defe4df817fd2bcd7a4552e1` |
+| Size | `61688` bytes |
+| SHA-256 | `c3e68e3ef48a52a9a218daa855410bcfa62a8bc921e16f575337f62c43385da0` |
 
 The flash command is:
 

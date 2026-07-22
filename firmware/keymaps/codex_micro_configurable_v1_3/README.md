@@ -69,12 +69,11 @@ uses equal brightness everywhere, and Perimeter keeps the effect on the outer
 ring while leaving the source Agent key visible. The source lookup follows
 Mapper remaps instead of assuming that Agent slots stay in their default keys.
 
-Ordinary Agent keys now have a consistent motion language. Idle uses a
-calibrated warm white at `FFD09A`, Working breathes a saturated electric blue
-at `005CFF`, Complete slowly breathes green, Needs Input uses
-an amber heartbeat, Error uses repeating red pulses, and Empty stays dark.
-Preview has a Status Demo that puts all six states on slots 1 through 6 at the
-same time, matching the OLED Slot Key.
+Ordinary Agent keys now stay dark for Idle and Empty. Working breathes a
+saturated electric blue at `005CFF`. Complete, Needs Input and Error smoothly
+pulse green, amber and red until their Agent key is pressed. Preview has a
+Status Demo that puts all six states on slots 1 through 6 at the same time,
+matching the OLED Slot Key.
 
 The extra preferences use a separate 16-byte CRC16 record at user-data offset
 712. The Mapper's two 356-byte slots and 340-byte payload stay byte-for-byte

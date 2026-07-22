@@ -394,13 +394,13 @@ int main(void) {
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
     assert(matrix_val == 120);
-    assert(colors[0][0] == 128 && colors[0][1] == 104 && colors[0][2] == 77);
+    assert(colors[0][0] == 0 && colors[0][1] == 0 && colors[0][2] == 0);
     assert(colors[1][0] == 0 && colors[1][1] == 0 && colors[1][2] > 0 && colors[1][2] < 128);
     assert(colors[2][0] == 107 && colors[2][1] == 105 && colors[2][2] == 128);
     assert(colors[4][0] > colors[4][1] && colors[4][1] > 0 && colors[4][2] == 0);
     assert(colors[5][0] > colors[5][2] && colors[5][2] > colors[5][1]);
-    assert(colors[8][0] == colors[0][0] && colors[8][1] == colors[0][1] && colors[8][2] == colors[0][2]);
-    assert(colors[9][0] == colors[0][0] && colors[9][1] == colors[0][1] && colors[9][2] == colors[0][2]);
+    assert(colors[8][0] == 0 && colors[8][1] == 0 && colors[8][2] == 0);
+    assert(colors[9][0] == 0 && colors[9][1] == 0 && colors[9][2] == 0);
     assert(colors[15][0] == colors[2][0] && colors[15][1] == colors[2][1] && colors[15][2] == colors[2][2]);
 
     kb16_config_payload_t moved_lights = *kb16_config_get();
@@ -424,7 +424,7 @@ int main(void) {
     assert(colors[4][0] > colors[4][1] && colors[4][1] > 0 && colors[4][2] == 0);
     assert(colors[5][0] > colors[5][2] && colors[5][2] > colors[5][1]);
     assert(colors[8][0] == 0x12 && colors[8][1] == 0x34 && colors[8][2] == 0x56);
-    assert(colors[9][0] == 255 && colors[9][1] == 208 && colors[9][2] == 154);
+    assert(colors[9][0] == 0 && colors[9][1] == 0 && colors[9][2] == 0);
 
     // A new unread task produces two smooth, whole-matrix green pulses and is
     // visible even when a local utility layer is active.
@@ -446,12 +446,35 @@ int main(void) {
     assert(colors[0][0] == 0xAA && colors[0][1] == 0xAA && colors[0][2] == 0xAA);
     layer_state = 1;
 
+    // Finished, permission, and error states keep breathing on their own task
+    // keys until that task is checked. Checking one doesn't clear the others.
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[0][1] > colors[0][0] && colors[0][1] > colors[0][2]);
+    assert(colors[4][0] > colors[4][1] && colors[4][1] > 0 && colors[4][2] == 0);
+    assert(colors[5][0] > colors[5][2] && colors[5][2] > colors[5][1]);
+    clear_reports();
+    codex_micro_send_agent_key(0, true);
+    codex_micro_send_agent_key(0, false);
+    memset(colors, 0, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[0][0] == 0 && colors[0][1] == 0 && colors[0][2] == 0);
+    assert(colors[4][0] > 0 && colors[5][0] > 0);
+    codex_micro_send_agent_key(2, true);
+    codex_micro_send_agent_key(2, false);
+    codex_micro_send_agent_key(3, true);
+    codex_micro_send_agent_key(3, false);
+    memset(colors, 0xAA, sizeof(colors));
+    assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
+    assert(colors[4][0] == 0 && colors[4][1] == 0 && colors[4][2] == 0);
+    assert(colors[5][0] == 0 && colors[5][1] == 0 && colors[5][2] == 0);
+
     clear_reports();
     feed_json("{\"method\":\"v.oai.thstatus\",\"params\":[{\"id\":0,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":1,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":2,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":3,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":4,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"},{\"id\":5,\"c\":16777215,\"b\":0.8,\"e\":\"solid\"}],\"id\":45}");
     assert(matrix_val == 120);
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
-    assert(colors[0][0] == 204 && colors[0][1] == 166 && colors[0][2] == 123);
+    assert(colors[0][0] == 0 && colors[0][1] == 0 && colors[0][2] == 0);
     assert(colors[15][0] == 172 && colors[15][1] == 168 && colors[15][2] == 204);
 
     clear_reports();
@@ -488,7 +511,7 @@ int main(void) {
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
     assert(colors[0][0] == 0 && colors[0][1] == 0 && colors[0][2] == 0);
     assert(colors[4][0] == 0 && colors[4][1] == 0 && colors[4][2] == 0);
-    assert(colors[9][0] == 51 && colors[9][1] == 41 && colors[9][2] == 30);
+    assert(colors[9][0] == 0 && colors[9][1] == 0 && colors[9][2] == 0);
     assert(colors[2][0] == 43 && colors[2][1] == 42 && colors[2][2] == 51);
     assert(colors[15][0] == 43 && colors[15][1] == 42 && colors[15][2] == 51);
 
@@ -561,7 +584,7 @@ int main(void) {
     assert(matrix_val == 120);
     memset(colors, 0, sizeof(colors));
     assert(codex_micro_rgb_indicators(0, RGB_MATRIX_LED_COUNT));
-    assert(colors[0][0] == 255 && colors[0][1] == 208 && colors[0][2] == 154);
+    assert(colors[0][0] == 0 && colors[0][1] == 0 && colors[0][2] == 0);
     assert(colors[15][0] == 0 && colors[15][1] == 0 && colors[15][2] == 0);
 
     clear_reports();

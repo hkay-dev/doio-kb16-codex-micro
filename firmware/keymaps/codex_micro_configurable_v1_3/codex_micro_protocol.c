@@ -18,7 +18,6 @@
 #define CODEX_MICRO_COOL_WHITE_RED 215
 #define CODEX_MICRO_COOL_WHITE_GREEN 211
 #define CODEX_MICRO_COOL_WHITE_BLUE 255
-#define CODEX_MICRO_IDLE_WARM_COLOR 0xFFD09AU
 #define CODEX_MICRO_STATUS_UNREAD_COLOR 0x00FF4CU
 #define CODEX_MICRO_STATUS_WORKING_COLOR 0x304FFEU
 #define CODEX_MICRO_STATUS_ATTENTION_COLOR 0xFF6D00U
@@ -83,6 +82,7 @@ static codex_micro_lighting_side_t preview_lighting;
 static bool                        preview_lighting_active;
 static bool                        status_demo_active;
 static codex_micro_slot_state_t    slot_states[CODEX_MICRO_HOST_SLOT_COUNT];
+static bool                        slot_checked[CODEX_MICRO_HOST_SLOT_COUNT];
 static uint32_t                    reminder_started_at[CODEX_MICRO_HOST_SLOT_COUNT];
 static bool                        reminder_acknowledged[CODEX_MICRO_HOST_SLOT_COUNT];
 
@@ -116,6 +116,10 @@ static codex_micro_slot_state_t normalize_slot(const codex_micro_light_t *light)
         case CODEX_MICRO_STATUS_ERROR_COLOR: return CODEX_MICRO_SLOT_ERROR;
         default: return CODEX_MICRO_SLOT_OTHER;
     }
+}
+
+static bool slot_needs_check(codex_micro_slot_state_t state) {
+    return state == CODEX_MICRO_SLOT_COMPLETE || state == CODEX_MICRO_SLOT_ATTENTION || state == CODEX_MICRO_SLOT_ERROR;
 }
 
 static void send_json(const char *json) {
@@ -571,6 +575,7 @@ static void update_thread_lighting(const char *params) {
                 codex_micro_slot_state_t previous = slot_states[id];
                 codex_micro_slot_state_t current = normalize_slot(light);
                 slot_states[id] = current;
+                if (current != previous) slot_checked[id] = !slot_needs_check(current);
                 if (current == CODEX_MICRO_SLOT_COMPLETE && previous != current) {
                     reminder_started_at[id] = now;
                     reminder_acknowledged[id] = false;
@@ -697,6 +702,7 @@ void codex_micro_init(void) {
     lighting_config_seen       = false;
     thread_snapshot_seen       = false;
     memset(slot_states, 0, sizeof(slot_states));
+    memset(slot_checked, true, sizeof(slot_checked));
     memset(reminder_started_at, 0, sizeof(reminder_started_at));
     memset(reminder_acknowledged, 0, sizeof(reminder_acknowledged));
     codex_micro_alerts_init();
@@ -726,6 +732,7 @@ void codex_micro_send_agent_key(uint8_t slot, bool pressed) {
 
     uint8_t mask = (uint8_t)(1U << slot);
     if (pressed) {
+        slot_checked[slot] = true;
         reminder_acknowledged[slot] = true;
         codex_micro_alerts_acknowledge_slot(slot, timer_read32());
         if (!host_seen) {
@@ -1038,12 +1045,10 @@ static uint32_t status_animation_time(uint32_t now) {
     return (uint32_t)((uint64_t)now * codex_micro_settings_get()->speed_percent / 100U);
 }
 
-static uint8_t status_pulse_window(uint32_t phase, uint16_t start, uint16_t length) {
-    if (phase < start || phase >= (uint32_t)start + length) return 0;
-    return pulse8((uint8_t)((phase - start) * 255U / length));
-}
+static codex_micro_rgb_t render_agent_status(const codex_micro_light_t *light, codex_micro_slot_state_t state, bool checked, uint8_t led, uint32_t now) {
+    codex_micro_rgb_t off = {0, 0, 0};
+    if (state == CODEX_MICRO_SLOT_IDLE || (slot_needs_check(state) && checked)) return off;
 
-static codex_micro_rgb_t render_agent_status(const codex_micro_light_t *light, codex_micro_slot_state_t state, uint8_t led, uint32_t now) {
     codex_micro_lighting_side_t side = {
         .color = display_thread_color(light->color),
         .brightness = light->brightness,
@@ -1055,26 +1060,12 @@ static codex_micro_rgb_t render_agent_status(const codex_micro_light_t *light, c
         side.color = ((uint32_t)CODEX_MICRO_COOL_WHITE_RED << 16) | ((uint32_t)CODEX_MICRO_COOL_WHITE_GREEN << 8) | CODEX_MICRO_COOL_WHITE_BLUE;
     }
 
-    if (state == CODEX_MICRO_SLOT_IDLE) side.color = CODEX_MICRO_IDLE_WARM_COLOR;
-
     if (state == CODEX_MICRO_SLOT_WORKING) {
         side.effect = CODEX_MICRO_EFFECT_BREATH;
         side.speed = 150;
-    } else if (state == CODEX_MICRO_SLOT_COMPLETE) {
-        side.effect = CODEX_MICRO_EFFECT_SHALLOW_BREATH;
-        side.speed = 72;
-    } else if (state == CODEX_MICRO_SLOT_ATTENTION || state == CODEX_MICRO_SLOT_ERROR) {
-        uint32_t phase = status_animation_time(now) % 1800U;
-        uint8_t level = 48;
-        if (state == CODEX_MICRO_SLOT_ATTENTION) {
-            uint8_t first = status_pulse_window(phase, 0, 300);
-            uint8_t second = status_pulse_window(phase, 450, 300);
-            level = first > second ? first : second;
-        } else {
-            uint32_t beat = phase % 600U;
-            level = beat < 400U ? pulse8((uint8_t)(beat * 255U / 400U)) : 0;
-        }
-        if (level < 48) level = 48;
+    } else if (slot_needs_check(state)) {
+        uint32_t phase = status_animation_time(now) % 2400U;
+        uint8_t level = pulse8((uint8_t)(phase * 255U / 2400U));
         return scale_color(side.color, side.brightness, level);
     }
     return render_effect(side, led, now);
@@ -1155,9 +1146,9 @@ bool codex_micro_rgb_indicators(uint8_t led_min, uint8_t led_max) {
                 CODEX_MICRO_STATUS_ATTENTION_COLOR, CODEX_MICRO_STATUS_ERROR_COLOR, 0,
             };
             codex_micro_light_t demo = {.color = demo_colors[slot], .brightness = 255, .speed = 100, .effect = CODEX_MICRO_EFFECT_SOLID, .assigned = slot != 5};
-            if (demo.assigned) color = render_agent_status(&demo, demo_states[slot], led, now);
+            if (demo.assigned) color = render_agent_status(&demo, demo_states[slot], false, led, now);
         } else if (host_seen && light->assigned && light->effect != CODEX_MICRO_EFFECT_OFF) {
-            color = render_agent_status(light, slot_states[slot], led, now);
+            color = render_agent_status(light, slot_states[slot], slot_checked[slot], led, now);
         }
         if (preview_lighting_active) color = render_effect(preview_lighting, led, now);
         codex_micro_alert_sample_t sample;

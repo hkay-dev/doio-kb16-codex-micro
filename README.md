@@ -67,21 +67,22 @@ updates, app-driven RGB, reconnects, and the on-device menu on a real KB16.
 ### Six live task slots
 
 Each Agent key keeps its own state even when a full-board effect is running.
-The palette was tuned for the KB16's RGB-only LEDs and acrylic bottom, so Idle
-and Working don't blur into the same cold blue-white.
+Idle task keys stay dark so translucent keycaps don't leave six distracting
+lights on all day.
 
 | State | Key light | OLED mark |
 |---|---|---|
-| Idle | Warm white `#FFD09A` | `I` |
+| Idle | Off | `I` |
 | Working | Electric-blue breath `#005CFF` | `W` |
-| Complete | Slow green breath | `C` |
-| Needs input | Amber heartbeat | `!` |
-| Error | Repeating red pulses | `E` |
+| Complete | Smooth green pulse until checked | `C` |
+| Needs input | Smooth amber pulse until checked | `!` |
+| Error | Smooth red pulse until checked | `E` |
 | Empty | Off | `-` |
 | Unknown | Host color | `?` |
 
 Agent lighting follows the slot if you move an Agent control with the Mapper.
-It isn't tied to the six original LED positions.
+It isn't tied to the six original LED positions. Pressing an Agent key marks
+that slot checked and turns off its outcome pulse.
 
 ### Full-board alerts that still show the source slot
 
